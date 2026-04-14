@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <title>nextUp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header id="app-header">
+    <div class="hd-left">
+      <span class="app-wordmark">nextUp</span>
+    </div>
+
+    <div class="hd-center">
+      <button class="nav-arrow" id="btn-prev" aria-label="Previous">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12L6 8l4-4"/></svg>
+      </button>
+      <button class="today-pill" id="btn-today">Today</button>
+      <span class="hd-range" id="hd-range"></span>
+      <button class="nav-arrow" id="btn-next" aria-label="Next">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+
+    <div class="hd-right">
+      <!-- Connection indicators -->
+      <div class="conn-dots" id="conn-dots" title="Account connections">
+        <span class="conn-dot" data-source="google" title="Google Calendar"></span>
+        <span class="conn-dot" data-source="microsoft" title="Microsoft Calendar"></span>
+      </div>
+
+      <!-- View switcher -->
+      <div class="view-tabs" id="view-tabs" role="tablist">
+        <button class="view-tab" data-view="continuous" role="tab" title="Continuous (default)">∞</button>
+        <button class="view-tab" data-view="day"        role="tab" title="Day">D</button>
+        <button class="view-tab" data-view="week"       role="tab" title="Week">W</button>
+        <button class="view-tab" data-view="month"      role="tab" title="Month">M</button>
+      </div>
+
+      <button class="icon-btn" id="btn-search" aria-label="Search (/)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6.5" r="4"/><path d="M10.5 10.5l3 3"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-theme" aria-label="Toggle theme">
+        <svg id="theme-icon-dark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 10A5.5 5.5 0 016 2.5a6 6 0 100 11 5.5 5.5 0 007.5-3.5z"/></svg>
+        <svg id="theme-icon-light" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="8" cy="8" r="3.5"/><line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/><line x1="1" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15" y2="8"/><line x1="3.1" y1="3.1" x2="4.2" y2="4.2"/><line x1="11.8" y1="11.8" x2="12.9" y2="12.9"/><line x1="12.9" y1="3.1" x2="11.8" y2="4.2"/><line x1="4.2" y1="11.8" x2="3.1" y2="12.9"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-settings" aria-label="Settings">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main calendar area ──────────────────────────────────── -->
+  <main id="app-main">
+    <div id="calendar-root"></div>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="10" width="36" height="32" rx="3"/><path d="M6 18h36M16 6v8M32 6v8"/><circle cx="24" cy="30" r="4"/></svg>
+      </div>
+      <p class="empty-title">No calendars connected</p>
+      <p class="empty-sub">Open <strong>Settings</strong> to connect your Google or Microsoft account.</p>
+      <button class="btn btn-primary" id="empty-open-settings">Open Settings</button>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <!-- ── Search overlay ─────────────────────────────────────── -->
+  <div id="search-overlay" class="search-overlay hidden" role="dialog" aria-modal="true" aria-label="Search events">
+    <div class="search-modal">
+      <div class="search-bar">
+        <svg class="search-bar-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6.5" r="4"/><path d="M10.5 10.5l3 3"/></svg>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search events…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <kbd class="search-kbd">ESC</kbd>
+      </div>
+      <div id="search-results" class="search-results" role="listbox"></div>
+      <div class="search-hint" id="search-hint">
+        Start typing to search across all events
+      </div>
+    </div>
+    <div class="search-backdrop"></div>
+  </div>
+
+  <!-- ── Event popover ──────────────────────────────────────── -->
+  <div id="event-popover" class="event-popover hidden" role="tooltip">
+    <button class="popover-close" id="popover-close" aria-label="Close">✕</button>
+    <div class="popover-source" id="popover-source"></div>
+    <h3 class="popover-title" id="popover-title"></h3>
+    <div class="popover-time" id="popover-time"></div>
+    <div class="popover-location" id="popover-location"></div>
+    <div class="popover-desc" id="popover-desc"></div>
+    <a class="popover-link" id="popover-link" target="_blank" rel="noopener">Open in calendar →</a>
+  </div>
+
+  <!-- ── Settings drawer ────────────────────────────────────── -->
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="settings-scrim" id="settings-scrim"></div>
+    <aside class="settings-drawer" role="dialog" aria-modal="true" aria-label="Settings">
+      <header class="sdrawer-header">
+        <span class="sdrawer-title">Settings</span>
+        <button class="icon-btn" id="close-settings" aria-label="Close settings">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+        </button>
+      </header>
+
+      <div class="sdrawer-body">
+
+        <!-- ── Google ────────────────────── -->
+        <section class="ssec">
+          <div class="ssec-head">
+            <span class="ssec-label">
+              <svg class="ssec-icon google-icon" viewBox="0 0 20 20"><path fill="#4285F4" d="M19.6 10.23c0-.82-.07-1.42-.2-2.05H10v3.72h5.5c-.26 1.27-1 2.27-2.1 2.96v2.45h3.4c2-1.84 3.15-4.56 3.15-7.08z"/><path fill="#34A853" d="M10 20c2.7 0 4.97-.9 6.63-2.44l-3.4-2.45c-.9.6-2.05.96-3.23.96-2.48 0-4.58-1.68-5.34-3.94H1.14v2.52C2.8 17.75 6.14 20 10 20z"/><path fill="#FBBC05" d="M4.66 12.13A5.99 5.99 0 014.32 10c0-.73.13-1.44.34-2.13V5.35H1.14A10 10 0 000 10c0 1.62.39 3.14 1.14 4.65l3.52-2.52z"/><path fill="#EA4335" d="M10 3.96c1.4 0 2.65.48 3.64 1.42L16.69 2.3C14.97.74 12.7-.02 10-.02 6.14-.02 2.8 2.27 1.14 5.37l3.52 2.5C5.42 5.64 7.52 3.96 10 3.96z"/></svg>
+              Google Calendar
+            </span>
+            <span class="conn-badge" id="g-conn-badge">Not connected</span>
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="g-client-id">Client ID</label>
+            <input class="sfield-input" id="g-client-id" type="text" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="g-client-secret">Client Secret</label>
+            <input class="sfield-input" id="g-client-secret" type="password" placeholder="GOCSPX-…" autocomplete="new-password" />
+          </div>
+          <div class="ssec-actions">
+            <button class="btn btn-accent" id="btn-connect-google">Connect</button>
+            <button class="btn btn-ghost-danger" id="btn-disconnect-google">Disconnect</button>
+          </div>
+        </section>
+
+        <!-- ── Microsoft ─────────────────── -->
+        <section class="ssec">
+          <div class="ssec-head">
+            <span class="ssec-label">
+              <svg class="ssec-icon ms-icon" viewBox="0 0 20 20"><rect x="1" y="1" width="8.5" height="8.5" fill="#F25022"/><rect x="10.5" y="1" width="8.5" height="8.5" fill="#7FBA00"/><rect x="1" y="10.5" width="8.5" height="8.5" fill="#00A4EF"/><rect x="10.5" y="10.5" width="8.5" height="8.5" fill="#FFB900"/></svg>
+              Microsoft Calendar
+            </span>
+            <span class="conn-badge" id="ms-conn-badge">Not connected</span>
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="ms-client-id">Client ID</label>
+            <input class="sfield-input" id="ms-client-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="ms-tenant-id">Tenant ID</label>
+            <input class="sfield-input" id="ms-tenant-id" type="text" placeholder="common  or  your-tenant-id" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="ms-client-secret">Client Secret</label>
+            <input class="sfield-input" id="ms-client-secret" type="password" placeholder="Secret value from Azure" autocomplete="new-password" />
+          </div>
+          <div class="ssec-actions">
+            <button class="btn btn-accent" id="btn-connect-microsoft">Connect</button>
+            <button class="btn btn-ghost-danger" id="btn-disconnect-microsoft">Disconnect</button>
+          </div>
+        </section>
+
+        <!-- ── Display ───────────────────── -->
+        <section class="ssec">
+          <div class="ssec-head">
+            <span class="ssec-label">Display</span>
+          </div>
+
+          <div class="sfield">
+            <label class="sfield-label">Default view</label>
+            <div class="seg-ctrl" id="setting-view">
+              <button class="seg-btn" data-val="continuous">Continuous</button>
+              <button class="seg-btn" data-val="day">Day</button>
+              <button class="seg-btn" data-val="week">Week</button>
+              <button class="seg-btn" data-val="month">Month</button>
+            </div>
+          </div>
+
+          <div class="sfield">
+            <label class="sfield-label">Theme</label>
+            <div class="seg-ctrl" id="setting-theme">
+              <button class="seg-btn" data-val="dark">Dark</button>
+              <button class="seg-btn" data-val="light">Light</button>
+              <button class="seg-btn" data-val="auto">Auto</button>
+            </div>
+          </div>
+
+          <div class="sfield">
+            <label class="sfield-label">Week starts</label>
+            <div class="seg-ctrl" id="setting-week-start">
+              <button class="seg-btn" data-val="monday">Monday</button>
+              <button class="seg-btn" data-val="sunday">Sunday</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Redirect URIs ─────────────── -->
+        <section class="ssec ssec-info">
+          <div class="ssec-head">
+            <span class="ssec-label">OAuth Redirect URIs</span>
+          </div>
+          <p class="info-text">Register these in your app dashboards:</p>
+          <div class="uri-row">
+            <span class="uri-label">Google</span>
+            <code class="uri-value" id="uri-google"></code>
+          </div>
+          <div class="uri-row">
+            <span class="uri-label">Microsoft</span>
+            <code class="uri-value" id="uri-microsoft"></code>
+          </div>
+        </section>
+
+      </div><!-- /sdrawer-body -->
+
+      <footer class="sdrawer-footer">
+        <button class="btn btn-primary full" id="btn-save-settings">Save settings</button>
+      </footer>
+    </aside>
+  </div>
+
+  <!-- ── Toast container ────────────────────────────────────── -->
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- ── Scripts ────────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <script src="/js/calendar.js"></script>
+  <script src="/js/search.js"></script>
+  <script src="/js/settings.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -70,6 +70,12 @@ web_modules/
 .env.*
 !.env.example
 
+# nextUp Calendar runtime data (contains encrypted tokens & secrets)
+data/tokens.json
+data/settings.json
+data/.enc_key
+data/.session_secret
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

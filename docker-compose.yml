@@ -1,0 +1,39 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────
+# nextUp Calendar — docker-compose
+#
+# Usage:
+#   cp .env.example .env        # fill in APP_URL at minimum
+#   docker compose up -d
+#
+# The ./data directory is mounted as a volume so that encrypted
+# tokens and settings survive container restarts/updates.
+# ─────────────────────────────────────────────────────────────
+
+services:
+  nextup-calendar:
+    build: .
+    container_name: nextup-calendar
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist tokens, settings, and the encryption key across restarts
+      - ./data:/app/data
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Public URL used to build OAuth callback URIs.
+      # Change this if your homebridge host uses a different name or port.
+      APP_URL: ${APP_URL:-http://homebridge.local:3000}
+    env_file:
+      # Optional .env file — used for SESSION_SECRET override etc.
+      - path: .env
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
