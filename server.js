@@ -22,6 +22,11 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // ── Security headers ─────────────────────────────────────────
+// This app runs over plain HTTP on a local network (no TLS termination).
+// upgrade-insecure-requests and COOP must be disabled to prevent the
+// browser from trying to reload static assets over HTTPS.
+const isHttps = process.env.HTTPS === 'true';
+
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -37,8 +42,12 @@ app.use(
         fontSrc: ["'self'", 'fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'"],
+        // Only upgrade requests when actually serving HTTPS
+        ...(isHttps ? {} : { upgradeInsecureRequests: null }),
       },
     },
+    // COOP requires a trustworthy (HTTPS or localhost) origin; disable on HTTP
+    crossOriginOpenerPolicy: isHttps ? { policy: 'same-origin' } : false,
     crossOriginEmbedderPolicy: false,
   })
 );
