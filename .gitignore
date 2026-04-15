@@ -153,6 +153,7 @@ dist
 # Electron widget
 electron/node_modules/
 electron/.env
+electron/config.json
 
 # Vite logs files
 vite.config.js.timestamp-*
