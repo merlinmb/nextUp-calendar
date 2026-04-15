@@ -8,16 +8,16 @@ A self-hosted, consolidated calendar app that merges your **Google Calendar** an
 
 ## Features
 
-- **Unified view** — Google and Microsoft events side-by-side, colour-coded by source
-- **Four views** — Continuous (default), Day, Week, Month
-- **Fuzzy search** — press any key to open an instant event search overlay (powered by Fuse.js)
-- **Dark / Light / Auto theme** — follows your OS preference or set manually
-- **Background sync** — events are pre-fetched every 15 minutes so page loads are instant
-- **JSON feed** — expose calendar data to other LAN clients via `/jsonCalendar?timeframe=7d`
-- **Secure token storage** — OAuth tokens are AES-256-GCM encrypted on disk; the app never logs out
-- **2FA compatible** — multi-factor auth is handled natively by Google / Microsoft login pages
-- **Zero build step** — vanilla JS + CSS, no bundler required
-- **Docker-first** — single container, persistent volume for credentials
+- **Unified view** - Google and Microsoft events side-by-side, colour-coded by source
+- **Four views** - Continuous (default), Day, Week, Month
+- **Fuzzy search** - press any key to open an instant event search overlay (powered by Fuse.js)
+- **Dark / Light / Auto theme** - follows your OS preference or set manually
+- **Background sync** - events are pre-fetched every 15 minutes so page loads are instant
+- **JSON feed** - expose calendar data to other LAN clients via `/jsonCalendar?timeframe=7d`
+- **Secure token storage** - OAuth tokens are AES-256-GCM encrypted on disk; the app never logs out
+- **2FA compatible** - multi-factor auth is handled natively by Google / Microsoft login pages
+- **Zero build step** - vanilla JS + CSS, no bundler required
+- **Docker-first** - single container, persistent volume for credentials
 
 ---
 
@@ -32,12 +32,12 @@ A self-hosted, consolidated calendar app that merges your **Google Calendar** an
 ### Deploy
 
 ```bash
-# On your Homebridge host (or use the PowerShell script — see below)
+# On your Homebridge host (or use the PowerShell script - see below)
 git clone https://github.com/merlinmb/nextUp-calendar.git
 cd nextUp-calendar
 
 cp .env.example .env
-# Edit .env if needed — the only required value is APP_URL
+# Edit .env if needed - the only required value is APP_URL
 
 docker compose up -d
 ```
@@ -63,7 +63,7 @@ All runtime configuration lives in two places:
 | Location | Purpose |
 |---|---|
 | `.env` | Server-level config (port, app URL, optional session secret override) |
-| Settings UI ⚙ | OAuth credentials, view preferences, theme — stored encrypted in `./data/settings.json` |
+| Settings UI ⚙ | OAuth credentials, view preferences, theme - stored encrypted in `./data/settings.json` |
 
 ### `.env` reference
 
@@ -71,7 +71,7 @@ All runtime configuration lives in two places:
 # Port the app listens on
 PORT=3050
 
-# Public URL — used to build OAuth callback URIs shown in Settings
+# Public URL - used to build OAuth callback URIs shown in Settings
 APP_URL=http://homebridge.local:3050
 
 NODE_ENV=production
@@ -106,7 +106,7 @@ NODE_ENV=production
    ```
    http://homebridge.local:3050/auth/microsoft/callback
    ```
-4. Go to **Certificates & secrets** → **New client secret** — copy the **Value**
+4. Go to **Certificates & secrets** → **New client secret** - copy the **Value**
 5. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated**:
    - `Calendars.Read`
    - `User.Read`
@@ -124,7 +124,7 @@ NODE_ENV=production
 ### Usage
 
 ```powershell
-# Basic — uses defaults (homebridge.local, port 3050)
+# Basic - uses defaults (homebridge.local, port 3050)
 .\deploy.ps1
 
 # Custom host
@@ -183,7 +183,7 @@ nextUp-calendar/
 
 - On first boot a random 256-bit encryption key is written to `data/.enc_key` (mode 0600)
 - All tokens and credential values are encrypted with **AES-256-GCM** before being written to `data/tokens.json` and `data/settings.json`
-- The `./data` directory should be a Docker volume — it is excluded from git via `.gitignore`
+- The `./data` directory should be a Docker volume - it is excluded from git via `.gitignore`
 - The server never exposes client secrets through any API response
 
 ---
@@ -243,7 +243,7 @@ The `timeframe` parameter specifies how far forward from **now** to return event
 }
 ```
 
-Events are served from the in-memory cache (populated on boot and refreshed every 15 minutes), so the response is instant. The endpoint is intentionally unauthenticated — keep it on your LAN.
+Events are served from the in-memory cache (populated on boot and refreshed every 15 minutes), so the response is instant. The endpoint is intentionally unauthenticated - keep it on your LAN.
 
 ---
 
@@ -284,4 +284,4 @@ Or with the PowerShell script:
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT - see [LICENSE](LICENSE)
