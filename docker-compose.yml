@@ -17,22 +17,22 @@ services:
     container_name: nextup-calendar
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3050:3050"
     volumes:
       # Persist tokens, settings, and the encryption key across restarts
       - ./data:/app/data
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      PORT: "3050"
       # Public URL used to build OAuth callback URIs.
       # Change this if your homebridge host uses a different name or port.
-      APP_URL: ${APP_URL:-http://homebridge.local:3000}
+      APP_URL: ${APP_URL:-http://homebridge.local:3050}
     env_file:
       # Optional .env file — used for SESSION_SECRET override etc.
       - path: .env
         required: false
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3050/health"]
       interval: 30s
       timeout: 5s
       retries: 3

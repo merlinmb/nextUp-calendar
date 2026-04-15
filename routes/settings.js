@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
       tenantId: s.microsoft?.tenantId || 'common',
       hasClientSecret: !!(s.microsoft?.clientSecret),
     },
-    appUrl: process.env.APP_URL || 'http://homebridge.local:3000',
+    appUrl: process.env.APP_URL || 'http://homebridge.local:3050',
   });
 });
 

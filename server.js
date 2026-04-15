@@ -13,7 +13,7 @@ const calendarRoutes = require('./routes/calendar');
 const settingsRoutes = require('./routes/settings');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3050;
 
 // ── Ensure data directory ────────────────────────────────────
 const dataDir = path.join(__dirname, 'data');
