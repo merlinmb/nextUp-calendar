@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; script-src 'self';">
+  <title>nextUp</title>
+  <!-- Web app design tokens (reused verbatim) -->
+  <link rel="stylesheet" href="../public/css/app.css">
+  <!-- Widget-specific layout -->
+  <link rel="stylesheet" href="renderer.css">
+</head>
+<body>
+
+  <!-- Header bar -->
+  <div class="widget-header">
+    <span class="widget-wordmark">nextUp</span>
+    <span class="widget-synced" id="sync-status"></span>
+  </div>
+
+  <!-- Scrollable events body -->
+  <div class="widget-body" id="widget-body">
+    <div class="widget-status" id="loading-msg">Loading&hellip;</div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
