@@ -91,7 +91,10 @@ function createWindow() {
       preload:             path.join(__dirname, 'preload.js'),
       contextIsolation:    true,
       nodeIntegration:     false,
-      additionalArguments: [`--server-url=${config.SERVER_URL}`],
+      additionalArguments: [
+        `--server-url=${config.SERVER_URL}`,
+        `--read-token=${config.READ_TOKEN || ''}`,
+      ],
     },
   });
 

@@ -137,10 +137,13 @@ let lastSyncedAt = null;
 
 async function fetchEvents() {
   const serverUrl = window.electronAPI.serverUrl;
+  const readToken = window.electronAPI.readToken;
   const url = `${serverUrl}/jsonCalendar?timeframe=2d`;
   console.log(`[fetch] GET ${url}`);
   try {
-    const resp = await fetch(url);
+    const resp = await fetch(url, {
+      headers: readToken ? { 'Authorization': `Bearer ${readToken}` } : {},
+    });
     console.log(`[fetch] response status=${resp.status} ok=${resp.ok}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();

@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "electron .",
-    "prebuild": "node -e \"require('fs').copyFileSync('../public/css/app.css','app.css'); require('dotenv').config({path:'.env'}); require('fs').writeFileSync('config.json',JSON.stringify({SERVER_URL:process.env.SERVER_URL||'http://homebridge.local:3050'}));\"",
+    "prebuild": "node -e \"require('fs').copyFileSync('../public/css/app.css','app.css'); require('dotenv').config({path:'.env'}); require('fs').writeFileSync('config.json',JSON.stringify({SERVER_URL:process.env.SERVER_URL||'http://homebridge.local:3050',READ_TOKEN:process.env.READ_TOKEN||''}));\"",
     "build": "electron-builder --win portable"
   },
   "dependencies": {
