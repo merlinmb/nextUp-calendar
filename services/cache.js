@@ -1,14 +1,15 @@
 'use strict';
 
-const google = require('./google');
+const google    = require('./google');
 const microsoft = require('./microsoft');
 
 // ── In-memory state ───────────────────────────────────────────
 const state = {
-  events:   [],
-  lastSync: null,   // Date or null
-  syncing:  false,
-  error:    null,   // string or null
+  events:         [],   // Google + Microsoft (replaced every sync)
+  externalEvents: [],   // Power Automate (replaced only by pushExternalEvents())
+  lastSync:       null, // Date or null
+  syncing:        false,
+  error:          null, // string or null
 };
 
 // Sync window: -3 days to +90 days from now
@@ -52,14 +53,19 @@ async function sync() {
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 function startScheduler() {
-  // Fire immediately, then repeat
   sync();
   setInterval(sync, INTERVAL_MS);
 }
 
 // ── Public API ───────────────────────────────────────────────
+
+/**
+ * Returns the merged, date-sorted union of Google/Microsoft events
+ * and any externally pushed events.
+ */
 function getEvents() {
-  return state.events;
+  return [...state.events, ...state.externalEvents]
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
 }
 
 function getStatus() {
@@ -70,4 +76,13 @@ function getStatus() {
   };
 }
 
-module.exports = { startScheduler, getEvents, getStatus, sync };
+/**
+ * Atomically replace all externally pushed events.
+ * Called by POST /events — the background sync never touches externalEvents.
+ */
+function pushExternalEvents(events) {
+  state.externalEvents = events;
+  console.log(`[cache] external events updated — ${events.length} stored`);
+}
+
+module.exports = { startScheduler, getEvents, getStatus, sync, pushExternalEvents };
