@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run *)"
+    ],
+    "additionalDirectories": [
+      "e:\\GoogleDrive\\Arduino\\nextUp-calendar"
     ]
   }
 }

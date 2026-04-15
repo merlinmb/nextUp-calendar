@@ -115,13 +115,26 @@ const CalendarRenderer = (() => {
 
     let todayGroup = null;
 
+    // Find the most recent past day — it will be shown greyed; all others are hidden
+    const pastDays = days.filter(({ date }) => date < todayDate && !sameDay(date, todayDate));
+    const lastPastDate = pastDays.length > 0 ? pastDays[pastDays.length - 1].date : null;
+
     for (const { date, allDay, timed } of days) {
       const isToday = sameDay(date, todayDate);
       const isPast  = date < todayDate && !isToday;
+      // Hide past days except the most recent one
+      const isHiddenPast = isPast && !(lastPastDate && sameDay(date, lastPastDate));
 
       const group = document.createElement('div');
       group.className = 'day-group' + (isToday ? ' is-today' : '') + (isPast ? ' is-past' : '');
       group.dataset.date = date.toISOString();
+
+      // For hidden past days: only show if they have all-day events, and only show those
+      if (isHiddenPast) {
+        if (allDay.length === 0) continue; // skip entirely if no all-day events
+        // Show the group but hide timed events — mark as hidden-past for styling
+        group.classList.add('is-hidden-past');
+      }
 
       // Header
       const header = document.createElement('div');
@@ -158,7 +171,12 @@ const CalendarRenderer = (() => {
         group.appendChild(strip);
       }
 
-      // Timed events
+      // Timed events (skip for hidden past days — only all-day events shown there)
+      if (isHiddenPast) {
+        wrap.appendChild(group);
+        continue;
+      }
+
       for (const ev of timed) {
         const start = eventStartDate(ev);
         const row = document.createElement('div');

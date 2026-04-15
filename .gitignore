@@ -3,6 +3,7 @@ docs/
 data/
 electron/build/
 electron/dist/
+.claude
 
 # Logs
 logs
