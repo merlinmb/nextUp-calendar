@@ -11,6 +11,7 @@ const fs = require('fs');
 const authRoutes = require('./routes/auth');
 const calendarRoutes = require('./routes/calendar');
 const settingsRoutes = require('./routes/settings');
+const cache = require('./services/cache');
 
 const app = express();
 const PORT = process.env.PORT || 3050;
@@ -92,6 +93,70 @@ app.use('/api/settings', settingsRoutes);
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }));
+
+// ── Public JSON calendar feed ─────────────────────────────────
+// GET /jsonCalendar?timeframe=7d  (units: h=hours, d=days, m=months)
+app.get('/jsonCalendar', (req, res) => {
+  const { timeframe } = req.query;
+
+  if (!timeframe) {
+    return res.status(400).json({ error: 'Missing timeframe parameter. Use format: 7d, 24h, 3m' });
+  }
+
+  const match = /^(\d+)([hdm])$/.exec(timeframe.trim());
+  if (!match) {
+    return res.status(400).json({ error: 'Invalid timeframe. Use format: 7d, 24h, 3m' });
+  }
+
+  const n    = parseInt(match[1], 10);
+  const unit = match[2];
+
+  if (n <= 0) {
+    return res.status(400).json({ error: 'Timeframe value must be a positive integer' });
+  }
+
+  // Cap at 12 months
+  const MAX_MS = 12 * 30 * 24 * 60 * 60 * 1000;
+
+  let windowMs;
+  if (unit === 'h')      windowMs = n * 60 * 60 * 1000;
+  else if (unit === 'd') windowMs = n * 24 * 60 * 60 * 1000;
+  else /* m */           windowMs = n * 30 * 24 * 60 * 60 * 1000;
+
+  if (windowMs > MAX_MS) windowMs = MAX_MS;
+
+  const now  = new Date();
+  const from = now;
+  const to   = new Date(now.getTime() + windowMs);
+
+  const events = cache.getEvents()
+    .filter((ev) => {
+      const evStart = new Date(ev.isAllDay ? ev.start + 'T00:00:00' : ev.start);
+      return evStart >= from && evStart < to;
+    })
+    .map((ev) => ({
+      id:           ev.id,
+      title:        ev.title,
+      start:        ev.start,
+      end:          ev.end,
+      isAllDay:     ev.isAllDay,
+      location:     ev.location || '',
+      calendarName: ev.calendarName || '',
+      source:       ev.source,
+    }));
+
+  res.json({
+    generated: now.toISOString(),
+    timeframe,
+    from:  from.toISOString(),
+    to:    to.toISOString(),
+    count: events.length,
+    events,
+  });
+});
+
+// ── Start background cache sync ───────────────────────────────
+cache.startScheduler();
 
 // ── Start ────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
