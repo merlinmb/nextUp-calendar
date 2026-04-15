@@ -4,16 +4,20 @@ require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
-const helmet = require('helmet');
-const path = require('path');
-const fs = require('fs');
+const helmet  = require('helmet');
+const path    = require('path');
+const fs      = require('fs');
 
-const authRoutes = require('./routes/auth');
+const authRoutes     = require('./routes/auth');
 const calendarRoutes = require('./routes/calendar');
 const settingsRoutes = require('./routes/settings');
-const cache = require('./services/cache');
+const loginRoutes    = require('./routes/login');
+const eventsRoutes   = require('./routes/events');
+const cache          = require('./services/cache');
+const { requireReadToken, requireWriteToken } = require('./middleware/auth');
+const { requireUiAuth } = require('./middleware/uiAuth');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3050;
 
 // ── Ensure data directory ────────────────────────────────────
@@ -83,20 +87,19 @@ app.use(
   })
 );
 
-// ── Static files ─────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ── Routes ───────────────────────────────────────────────────
-app.use('/auth', authRoutes);
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/settings', settingsRoutes);
-
-// ── Health check ─────────────────────────────────────────────
+// ── Public routes (no auth) ───────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }));
+app.get('/openapi.yaml', (_req, res) =>
+  res.sendFile(path.join(__dirname, 'openapi.yaml'))
+);
+app.use('/login', loginRoutes);
 
-// ── Public JSON calendar feed ─────────────────────────────────
-// GET /jsonCalendar?timeframe=7d  (units: h=hours, d=days, m=months)
-app.get('/jsonCalendar', (req, res) => {
+// ── Token-authenticated API routes ───────────────────────────
+// POST /events — Power Automate write access
+app.use('/events', requireWriteToken, eventsRoutes);
+
+// GET /jsonCalendar — Electron widget read access
+app.get('/jsonCalendar', requireReadToken, (req, res) => {
   const { timeframe } = req.query;
 
   if (!timeframe) {
@@ -154,6 +157,16 @@ app.get('/jsonCalendar', (req, res) => {
     events,
   });
 });
+
+// ── UI-authenticated routes ───────────────────────────────────
+// Static files (CSS, JS) served before the UI gate — the login page needs them
+app.use(express.static(path.join(__dirname, 'public')));
+
+// All remaining routes require the UI passphrase session
+app.use(requireUiAuth);
+app.use('/auth',         authRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // ── Start background cache sync ───────────────────────────────
 cache.startScheduler();
