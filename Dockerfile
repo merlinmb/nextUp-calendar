@@ -13,10 +13,12 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
   && npm cache clean --force
 
 # Copy application source
-COPY server.js ./
-COPY routes/   ./routes/
-COPY services/ ./services/
-COPY public/   ./public/
+COPY server.js    ./
+COPY routes/      ./routes/
+COPY services/    ./services/
+COPY middleware/  ./middleware/
+COPY public/      ./public/
+COPY openapi.yaml ./
 
 # The data directory is expected to be a mounted volume.
 # Create it here so the image works standalone too.
