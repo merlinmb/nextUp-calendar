@@ -158,12 +158,15 @@ app.get('/jsonCalendar', requireReadToken, (req, res) => {
   });
 });
 
-// ── UI-authenticated routes ───────────────────────────────────
-// Static files (CSS, JS) served before the UI gate — the login page needs them
-app.use(express.static(path.join(__dirname, 'public')));
+// ── Static assets (CSS/JS) — public, needed by the login page ────────────
+// Only expose the css/ and js/ subdirectories without auth, not index.html
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
 
-// All remaining routes require the UI passphrase session
+// ── UI-authenticated routes ───────────────────────────────────
+// All remaining routes (including serving index.html) require the UI session
 app.use(requireUiAuth);
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/auth',         authRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/settings', settingsRoutes);
