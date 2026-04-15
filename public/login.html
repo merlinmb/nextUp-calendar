@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nextUp — Sign in</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: var(--bg-base, #0f1117);
+    }
+    .login-card {
+      background: var(--bg-surface, #1a1d27);
+      border: 1px solid var(--border, #2a2d3a);
+      border-radius: 12px;
+      padding: 2rem 2.5rem;
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .login-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary, #e8eaf0);
+      margin: 0;
+    }
+    .login-sub {
+      font-size: 0.85rem;
+      color: var(--text-secondary, #8b90a0);
+      margin: 0;
+    }
+    .login-error {
+      color: #f87171;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .login-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary, #8b90a0);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .login-input {
+      background: var(--bg-input, #0f1117);
+      border: 1px solid var(--border, #2a2d3a);
+      border-radius: 6px;
+      color: var(--text-primary, #e8eaf0);
+      font-size: 1rem;
+      padding: 0.6rem 0.8rem;
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .login-input:focus {
+      border-color: var(--accent, #6c7bff);
+    }
+    .login-btn {
+      background: var(--accent, #6c7bff);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 0.65rem 1rem;
+      width: 100%;
+    }
+    .login-btn:hover { opacity: 0.88; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div>
+      <p class="login-title">nextUp</p>
+      <p class="login-sub">Enter the passphrase to continue.</p>
+    </div>
+    <p class="login-error" id="login-error">Incorrect passphrase. Try again.</p>
+    <form method="POST" action="/login">
+      <div class="login-field">
+        <label class="login-label" for="passphrase">Passphrase</label>
+        <input
+          class="login-input"
+          id="passphrase"
+          name="passphrase"
+          type="password"
+          autocomplete="current-password"
+          autofocus
+          required
+        />
+      </div>
+      <br />
+      <button class="login-btn" type="submit">Sign in</button>
+    </form>
+  </div>
+  <script>
+    // Show error if redirected back with ?error=1
+    if (new URLSearchParams(location.search).get('error')) {
+      document.getElementById('login-error').classList.add('visible');
+    }
+  </script>
+</body>
+</html>
