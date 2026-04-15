@@ -9,7 +9,7 @@ function createOAuth2Client() {
   const { clientId, clientSecret } = settings.google || {};
   if (!clientId || !clientSecret) return null;
 
-  const appUrl = process.env.APP_URL || 'http://homebridge.local:3000';
+  const appUrl = process.env.APP_URL || 'http://homebridge.local:3050';
   const redirectUri = `${appUrl}/auth/google/callback`;
 
   const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
