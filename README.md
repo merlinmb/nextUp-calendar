@@ -12,6 +12,8 @@ A self-hosted, consolidated calendar app that merges your **Google Calendar** an
 - **Four views** — Continuous (default), Day, Week, Month
 - **Fuzzy search** — press any key to open an instant event search overlay (powered by Fuse.js)
 - **Dark / Light / Auto theme** — follows your OS preference or set manually
+- **Background sync** — events are pre-fetched every 15 minutes so page loads are instant
+- **JSON feed** — expose calendar data to other LAN clients via `/jsonCalendar?timeframe=7d`
 - **Secure token storage** — OAuth tokens are AES-256-GCM encrypted on disk; the app never logs out
 - **2FA compatible** — multi-factor auth is handled natively by Google / Microsoft login pages
 - **Zero build step** — vanilla JS + CSS, no bundler required
@@ -157,12 +159,13 @@ NODE_ENV=production
 
 ```
 nextUp-calendar/
-├── server.js               # Express entry point
+├── server.js               # Express entry point, /jsonCalendar route
 ├── routes/
 │   ├── auth.js             # OAuth2 flows (Google + Microsoft)
-│   ├── calendar.js         # /api/calendar/events endpoint
+│   ├── calendar.js         # /api/calendar/events endpoint (cache-backed)
 │   └── settings.js         # /api/settings CRUD
 ├── services/
+│   ├── cache.js            # In-memory event cache + 15-min background sync
 │   ├── store.js            # AES-256-GCM encrypted JSON storage
 │   ├── google.js           # Google Calendar API (auto token refresh)
 │   └── microsoft.js        # Microsoft Graph API (manual token refresh)
@@ -197,6 +200,50 @@ nextUp-calendar/
 **Navigation:** `←` / `→` arrow keys, or the chevron buttons in the header. Press `T` to jump to today.
 
 **Search:** Press any key (when not in an input field) or `/` to open the fuzzy search overlay. Use `↑` / `↓` to navigate results, `Enter` to select, `Esc` to close.
+
+---
+
+## JSON Calendar Feed
+
+A public, unauthenticated endpoint exposes cached events as structured JSON for other LAN clients (dashboards, home automation, scripts).
+
+```
+GET /jsonCalendar?timeframe=<value>
+```
+
+The `timeframe` parameter specifies how far forward from **now** to return events:
+
+| Unit | Example | Meaning |
+|------|---------|---------|
+| `h`  | `24h`   | Next 24 hours |
+| `d`  | `7d`    | Next 7 days |
+| `m`  | `3m`    | Next 3 months (max: `12m`) |
+
+**Example response:**
+
+```json
+{
+  "generated": "2026-04-15T10:00:00.000Z",
+  "timeframe": "7d",
+  "from": "2026-04-15T10:00:00.000Z",
+  "to": "2026-04-22T10:00:00.000Z",
+  "count": 12,
+  "events": [
+    {
+      "id": "g_abc123",
+      "title": "Team standup",
+      "start": "2026-04-15T09:00:00.000Z",
+      "end": "2026-04-15T09:30:00.000Z",
+      "isAllDay": false,
+      "location": "",
+      "calendarName": "Work",
+      "source": "google"
+    }
+  ]
+}
+```
+
+Events are served from the in-memory cache (populated on boot and refreshed every 15 minutes), so the response is instant. The endpoint is intentionally unauthenticated — keep it on your LAN.
 
 ---
 
