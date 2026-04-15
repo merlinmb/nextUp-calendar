@@ -89,9 +89,10 @@ app.use(
 
 // ── Public routes (no auth) ───────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }));
-app.get('/openapi.yaml', (_req, res) =>
-  res.sendFile(path.join(__dirname, 'openapi.yaml'))
-);
+app.get('/openapi.yaml', (_req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=UTF-8');
+  res.sendFile(path.join(__dirname, 'openapi.yaml'));
+});
 app.use('/login', loginRoutes);
 
 // ── Token-authenticated API routes ───────────────────────────
