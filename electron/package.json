@@ -4,6 +4,10 @@
   "description": "Always-on-top desktop widget for nextUp Calendar",
   "main": "main.js",
   "author": "merlinmb",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/merlinmb/nextUp-calendar.git"
+  },
   "scripts": {
     "start": "electron .",
     "prebuild": "node -e \"require('fs').copyFileSync('../public/css/app.css','app.css'); require('dotenv').config({path:'.env'}); require('fs').writeFileSync('config.json',JSON.stringify({SERVER_URL:process.env.SERVER_URL||'http://homebridge.local:3050'}));\"",
