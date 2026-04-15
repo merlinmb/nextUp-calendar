@@ -1,3 +1,7 @@
+docs/secrets.txt
+docs/
+data/
+
 # Logs
 logs
 *.log
@@ -139,6 +143,9 @@ dist
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Git worktrees
+.worktrees/
 
 # Vite logs files
 vite.config.js.timestamp-*
