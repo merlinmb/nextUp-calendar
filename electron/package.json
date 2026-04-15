@@ -1,0 +1,13 @@
+{
+  "name": "nextup-calendar-widget",
+  "version": "1.0.0",
+  "description": "Always-on-top desktop widget for nextUp Calendar",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "electron": "^30.0.0"
+  }
+}

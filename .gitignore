@@ -147,6 +147,10 @@ dist
 # Git worktrees
 .worktrees/
 
+# Electron widget
+electron/node_modules/
+electron/.env
+
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
