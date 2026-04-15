@@ -282,6 +282,38 @@ Or with the PowerShell script:
 
 ---
 
+## Electron Desktop Widget
+
+A lightweight always-on-top desktop widget that shows today's and tomorrow's events, powered by the `/jsonCalendar` feed.
+
+### Setup
+
+```bash
+cd electron
+cp .env.example .env
+# Set SERVER_URL to your nextUp server address
+npm install
+npm start
+```
+
+### Behaviour
+
+- **Always-on-top** frameless widget, 320×480px, positioned bottom-right of your screen
+- **System tray icon** - click to show/hide; right-click for Refresh / Quit
+- **Auto-refreshes** every 15 minutes; also refreshes each time you show it
+- **Dark theme** matching the web app design system
+- Drag the widget by its header bar to reposition it
+
+### Configuration
+
+`electron/.env`:
+
+```bash
+SERVER_URL=http://homebridge.local:3050
+```
+
+---
+
 ## License
 
 MIT - see [LICENSE](LICENSE)
