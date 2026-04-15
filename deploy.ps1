@@ -8,7 +8,7 @@
     writes an .env file if one does not already exist, then builds and
     starts the container with Docker Compose.
 
-.PARAMETER Host
+.PARAMETER TargetHost
     Hostname or IP address of the Homebridge server. Default: homebridge.local
 
 .PARAMETER User
@@ -23,7 +23,7 @@
 
 .PARAMETER AppUrl
     Public URL of the app, used to build OAuth callback URIs.
-    Default: http://<Host>:3050
+    Default: http://<TargetHost>:3050
 
 .PARAMETER Port
     Host port to expose the app on. Default: 3050
@@ -38,7 +38,7 @@
     .\deploy.ps1
 
 .EXAMPLE
-    .\deploy.ps1 -Host 192.168.1.50 -User ubuntu -Rebuild
+    .\deploy.ps1 -TargetHost 192.168.1.50 -User ubuntu -Rebuild
 
 .EXAMPLE
     .\deploy.ps1 -SshKey ~/.ssh/homebridge_rsa -Branch main
@@ -46,76 +46,115 @@
 
 [CmdletBinding()]
 param(
-    [string] $Host      = 'homebridge.local',
-    [string] $User      = 'pi',
-    [string] $SshKey    = '',
-    [string] $RemoteDir = '/opt/nextup-calendar',
-    [string] $AppUrl    = '',
-    [int]    $Port      = 3050,
+    [string] $TargetHost = 'homebridge.local',
+    [string] $User       = 'pi',
+    [string] $SshKey     = '',
+    [string] $RemoteDir  = '/home/pi/portainer_data/nextup-calendar',
+    [string] $AppUrl     = '',
+    [int]    $Port       = 3050,
     [switch] $Rebuild,
-    [string] $Branch    = 'main'
+    [string] $Branch     = 'main'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
-# ── Colour helpers ────────────────────────────────────────────
-function Write-Step  { param([string]$msg) Write-Host "  → $msg" -ForegroundColor Cyan }
-function Write-Ok    { param([string]$msg) Write-Host "  ✓ $msg" -ForegroundColor Green }
-function Write-Warn  { param([string]$msg) Write-Host "  ⚠ $msg" -ForegroundColor Yellow }
-function Write-Fail  { param([string]$msg) Write-Host "  ✗ $msg" -ForegroundColor Red }
+# -- Color helpers ------------------------------------------------
+function Write-Step  { param([string]$msg) Write-Host "  -> $msg" -ForegroundColor Cyan }
+function Write-Ok    { param([string]$msg) Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Warn  { param([string]$msg) Write-Host "  [!] $msg" -ForegroundColor Yellow }
+function Write-Fail  { param([string]$msg) Write-Host "  [X] $msg" -ForegroundColor Red }
 
 function Write-Banner {
     Write-Host ""
-    Write-Host "  ┌──────────────────────────────────────┐" -ForegroundColor DarkCyan
-    Write-Host "  │      nextUp Calendar — deploy        │" -ForegroundColor DarkCyan
-    Write-Host "  └──────────────────────────────────────┘" -ForegroundColor DarkCyan
+    Write-Host "  ======================================" -ForegroundColor DarkCyan
+    Write-Host "      nextUp Calendar - deploy" -ForegroundColor DarkCyan
+    Write-Host "  ======================================" -ForegroundColor DarkCyan
     Write-Host ""
 }
 
-# ── SSH helper ─────────────────────────────────────────────────
+# -- SSH helper ---------------------------------------------------
 # Returns an array of ssh arguments (key flag inserted when -SshKey given)
 function Get-SshArgs {
-    $args = @('-o', 'StrictHostKeyChecking=accept-new',
-              '-o', 'ConnectTimeout=10')
+    $sshArgs = @('-o', 'StrictHostKeyChecking=accept-new',
+                 '-o', 'ConnectTimeout=10')
     if ($SshKey -ne '') {
-        $resolved = (Resolve-Path $SshKey -ErrorAction SilentlyContinue)?.Path
+        $resolvedPath = Resolve-Path $SshKey -ErrorAction SilentlyContinue
+        $resolved = if ($resolvedPath) { $resolvedPath.Path } else { $null }
         if (-not $resolved) { throw "SSH key not found: $SshKey" }
-        $args += @('-i', $resolved)
+        $sshArgs += @('-i', $resolved)
     }
-    return $args
+    return $sshArgs
 }
 
 # Run a command on the remote host; throw on non-zero exit
 function Invoke-Remote {
     param([string]$Command, [switch]$AllowFail)
+
     $sshArgs = Get-SshArgs
-    $target  = "${User}@${Host}"
-    $result  = & ssh @sshArgs $target $Command 2>&1
-    if ($LASTEXITCODE -ne 0 -and -not $AllowFail) {
-        Write-Fail "Remote command failed (exit $LASTEXITCODE):"
-        Write-Host $result -ForegroundColor DarkRed
-        throw "Remote command failed: $Command"
+    $target = "${User}@${TargetHost}"
+    $argumentList = @($sshArgs + $target + $Command)
+    $stdoutPath = [System.IO.Path]::GetTempFileName()
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+
+    try {
+        $process = Start-Process -FilePath 'ssh' -ArgumentList $argumentList -NoNewWindow -Wait -PassThru `
+            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+
+        $stdout = if (Test-Path $stdoutPath) { Get-Content -Path $stdoutPath } else { @() }
+        $stderr = if (Test-Path $stderrPath) { Get-Content -Path $stderrPath } else { @() }
+        $result = @($stdout + $stderr | Where-Object { $_ -ne '' })
+        $global:LASTEXITCODE = $process.ExitCode
+
+        if ($process.ExitCode -ne 0 -and -not $AllowFail) {
+            Write-Fail "Remote command failed (exit $($process.ExitCode)):"
+            $result | ForEach-Object { Write-Host $_ -ForegroundColor DarkRed }
+            throw "Remote command failed: $Command"
+        }
+
+        return $result
+    } finally {
+        Remove-Item $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
     }
-    return $result
 }
 
 # Copy a local file to the remote host
 function Copy-ToRemote {
     param([string]$LocalPath, [string]$RemotePath)
+
     $sshArgs = Get-SshArgs
-    $target  = "${User}@${Host}:${RemotePath}"
-    & scp @sshArgs $LocalPath $target | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "scp failed: $LocalPath → $RemotePath" }
+    $target = "${User}@${TargetHost}:$RemotePath"
+    $argumentList = @($sshArgs + $LocalPath + $target)
+    $stdoutPath = [System.IO.Path]::GetTempFileName()
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+
+    try {
+        $process = Start-Process -FilePath 'scp' -ArgumentList $argumentList -NoNewWindow -Wait -PassThru `
+            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $global:LASTEXITCODE = $process.ExitCode
+
+        if ($process.ExitCode -ne 0) {
+            $errors = if (Test-Path $stderrPath) { Get-Content -Path $stderrPath } else { @() }
+            if ($errors) {
+                $errors | ForEach-Object { Write-Host $_ -ForegroundColor DarkRed }
+            }
+            throw "scp failed: $LocalPath -> $RemotePath"
+        }
+    } finally {
+        Remove-Item $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
-# ── Pre-flight checks ─────────────────────────────────────────
+# -- Pre-flight checks -------------------------------------------
 function Test-Prerequisites {
-    Write-Step "Checking prerequisites…"
+    Write-Step "Checking prerequisites..."
 
     # ssh
     if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
-        throw "ssh is not available. Install OpenSSH (Settings → Optional Features → OpenSSH Client) or Git for Windows."
+        throw "ssh is not available. Install OpenSSH (Settings -> Optional Features -> OpenSSH Client) or Git for Windows."
     }
 
     # scp
@@ -126,23 +165,23 @@ function Test-Prerequisites {
     Write-Ok "ssh and scp found"
 }
 
-# ── Connectivity test ─────────────────────────────────────────
+# -- Connectivity test -------------------------------------------
 function Test-Connection {
-    Write-Step "Testing SSH connection to ${User}@${Host}…"
+    Write-Step "Testing SSH connection to ${User}@${TargetHost}..."
     try {
         $out = Invoke-Remote "echo ok"
         if ($out -match 'ok') { Write-Ok "Connected" }
         else { throw "Unexpected response" }
     } catch {
-        Write-Fail "Cannot connect to ${User}@${Host}"
+        Write-Fail "Cannot connect to ${User}@${TargetHost}"
         Write-Host "  Ensure SSH is enabled on your Homebridge host and the user account exists." -ForegroundColor DarkGray
         throw
     }
 }
 
-# ── Remote checks ─────────────────────────────────────────────
+# -- Remote checks -----------------------------------------------
 function Test-RemoteTools {
-    Write-Step "Checking remote tools (docker, git)…"
+    Write-Step "Checking remote tools (docker, git)..."
 
     $missing = @()
 
@@ -164,47 +203,66 @@ function Test-RemoteTools {
     }
 }
 
-# ── Resolve compose command ────────────────────────────────────
+# -- Resolve compose command -------------------------------------
 function Get-ComposeCmd {
     $v2 = Invoke-Remote "docker compose version 2>/dev/null && echo yes || echo no" -AllowFail
     if ($v2 -match 'yes') { return 'docker compose' }
     return 'docker-compose'
 }
 
-# ── Clone or update repo ───────────────────────────────────────
+# -- Clone or update repo ----------------------------------------
 function Sync-Repository {
-    Write-Step "Syncing repository to ${RemoteDir}…"
+    Write-Step "Syncing repository to ${RemoteDir}..."
 
     $repoUrl = 'https://github.com/merlinmb/nextUp-calendar.git'
+    $remoteParent = Split-Path $RemoteDir -Parent
 
     # Create parent directory
-    Invoke-Remote "sudo mkdir -p $(Split-Path $RemoteDir -Parent) && sudo chown ${User}:${User} $(Split-Path $RemoteDir -Parent)" -AllowFail | Out-Null
+    $createParentCommand = "sudo mkdir -p '$remoteParent' && sudo chown $User`:$User '$remoteParent'"
+    Invoke-Remote $createParentCommand -AllowFail | Out-Null
 
-    $exists = Invoke-Remote "test -d '${RemoteDir}/.git' && echo yes || echo no"
+    $existsCommand = "test -d '$RemoteDir/.git' && echo yes || echo no"
+    $exists = Invoke-Remote $existsCommand
     if ($exists -match 'yes') {
-        Write-Step "Repository exists — pulling latest ${Branch}…"
-        Invoke-Remote "cd '${RemoteDir}' && git fetch origin && git checkout '${Branch}' && git reset --hard origin/${Branch}"
+        Write-Step "Repository exists - pulling latest ${Branch}..."
+        $updateCommand = "cd '$RemoteDir' && git fetch --prune origin '$Branch' && git checkout -q '$Branch' && git reset --hard 'origin/$Branch'"
+        Invoke-Remote $updateCommand
         Write-Ok "Repository updated"
     } else {
-        Write-Step "Cloning repository…"
-        Invoke-Remote "git clone --branch '${Branch}' '${repoUrl}' '${RemoteDir}'"
+        Write-Step "Cloning repository..."
+        $cloneCommand = "git clone --branch '$Branch' '$repoUrl' '$RemoteDir'"
+        Invoke-Remote $cloneCommand
         Write-Ok "Repository cloned"
     }
 }
 
-# ── Write .env ─────────────────────────────────────────────────
-function Write-EnvFile {
-    Write-Step "Checking .env on remote…"
+# -- Remove previous container -----------------------------------
+function Remove-PreviousContainer {
+    param([string]$ComposeCmd)
 
-    $envExists = Invoke-Remote "test -f '${RemoteDir}/.env' && echo yes || echo no"
+    Write-Step "Removing previous container..."
+    $downCommand = "cd '$RemoteDir' && $ComposeCmd down --remove-orphans"
+    Invoke-Remote $downCommand -AllowFail | Out-Null
+
+    $removeContainerCommand = "docker rm -f nextup-calendar 2>/dev/null || true"
+    Invoke-Remote $removeContainerCommand -AllowFail | Out-Null
+    Write-Ok "Previous container removed"
+}
+
+# -- Write .env ---------------------------------------------------
+function Write-EnvFile {
+    Write-Step "Checking .env on remote..."
+
+    $envExistsCommand = "test -f '$RemoteDir/.env' && echo yes || echo no"
+    $envExists = Invoke-Remote $envExistsCommand
     if ($envExists -match 'yes') {
-        Write-Ok ".env already exists — leaving it unchanged"
+        Write-Ok ".env already exists - leaving it unchanged"
         return
     }
 
-    Write-Step "Creating .env…"
+    Write-Step "Creating .env..."
 
-    $resolvedAppUrl = if ($AppUrl -ne '') { $AppUrl } else { "http://${Host}:${Port}" }
+    $resolvedAppUrl = if ($AppUrl -ne '') { $AppUrl } else { 'http://{0}:{1}' -f $TargetHost, $Port }
 
     # Generate a random session secret locally
     $secret = -join ((1..48) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
@@ -218,32 +276,38 @@ SESSION_SECRET=${secret}
 
     # Write to a temp file and scp it across
     $tmp = [System.IO.Path]::GetTempFileName()
+    $remoteEnvPath = '{0}/.env' -f $RemoteDir
     try {
         $envContent | Set-Content -Path $tmp -Encoding UTF8 -NoNewline
-        Copy-ToRemote -LocalPath $tmp -RemotePath "${RemoteDir}/.env"
-        Write-Ok ".env created (APP_URL=${resolvedAppUrl}, PORT=${Port})"
+        Copy-ToRemote -LocalPath $tmp -RemotePath $remoteEnvPath
+        Write-Ok ('.env created (APP_URL={0}, PORT={1})' -f $resolvedAppUrl, $Port)
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
     }
 }
 
-# ── Build and start ────────────────────────────────────────────
+# -- Build and start ---------------------------------------------
 function Start-Container {
     param([string]$ComposeCmd)
 
-    Write-Step "Building Docker image…"
+    Write-Step "Building Docker image..."
     $buildFlags = if ($Rebuild) { '--no-cache' } else { '' }
-    Invoke-Remote "cd '${RemoteDir}' && ${ComposeCmd} build ${buildFlags}"
+    $buildCommand = ("cd '$RemoteDir' && {0} build" -f $ComposeCmd).Trim()
+    if ($buildFlags) {
+        $buildCommand = "$buildCommand $buildFlags"
+    }
+    Invoke-Remote $buildCommand
     Write-Ok "Image built"
 
-    Write-Step "Starting container…"
-    Invoke-Remote "cd '${RemoteDir}' && ${ComposeCmd} up -d --remove-orphans"
+    Write-Step "Starting container..."
+    $upCommand = "cd '$RemoteDir' && $ComposeCmd up -d --remove-orphans"
+    Invoke-Remote $upCommand
     Write-Ok "Container started"
 }
 
-# ── Health check ───────────────────────────────────────────────
+# -- Health check -------------------------------------------------
 function Test-Health {
-    Write-Step "Waiting for app to become healthy…"
+    Write-Step "Waiting for app to become healthy..."
 
     $resolvedAppUrl = if ($AppUrl -ne '') { $AppUrl } else { "http://localhost:${Port}" }
     $healthUrl = "${resolvedAppUrl}/health"
@@ -256,51 +320,53 @@ function Test-Health {
         Start-Sleep -Seconds $intervalS
         $attempts++
 
-        $result = Invoke-Remote "curl -sf '${healthUrl}' 2>/dev/null && echo ok || echo fail" -AllowFail
+        $healthCommand = "curl -sf '$healthUrl' 2>/dev/null && echo ok || echo fail"
+        $result = Invoke-Remote $healthCommand -AllowFail
         if ($result -match 'ok') {
             Write-Ok "App is healthy after $($attempts * $intervalS)s"
             return
         }
-        Write-Host "    (attempt $attempts/$maxTries)…" -ForegroundColor DarkGray
+        Write-Host "    (attempt $attempts/$maxTries)..." -ForegroundColor DarkGray
     }
 
     Write-Warn "Health check did not pass within $($maxTries * $intervalS)s."
-    Write-Warn "Check container logs: ssh ${User}@${Host} 'cd ${RemoteDir} && docker compose logs'"
+    Write-Warn ("Check container logs: ssh $User@$TargetHost 'cd $RemoteDir && docker compose logs'")
 }
 
-# ── Show logs (last few lines) ─────────────────────────────────
+# -- Show logs (last few lines) ----------------------------------
 function Show-Logs {
     param([string]$ComposeCmd)
     Write-Step "Recent container logs:"
-    $logs = Invoke-Remote "cd '${RemoteDir}' && ${ComposeCmd} logs --tail=15" -AllowFail
+    $logsCommand = "cd '$RemoteDir' && $ComposeCmd logs --tail=15"
+    $logs = Invoke-Remote $logsCommand -AllowFail
     $logs | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
 }
 
-# ── Summary ────────────────────────────────────────────────────
+# -- Summary ------------------------------------------------------
 function Write-Summary {
-    $resolvedAppUrl = if ($AppUrl -ne '') { $AppUrl } else { "http://${Host}:${Port}" }
+    $resolvedAppUrl = if ($AppUrl -ne '') { $AppUrl } else { "http://${TargetHost}:${Port}" }
     Write-Host ""
-    Write-Host "  ┌──────────────────────────────────────────────────────┐" -ForegroundColor Green
-    Write-Host "  │              Deployment complete ✓                   │" -ForegroundColor Green
-    Write-Host "  ├──────────────────────────────────────────────────────┤" -ForegroundColor Green
-    Write-Host "  │  App URL  : $($resolvedAppUrl.PadRight(41)) │" -ForegroundColor Green
-    Write-Host "  │  Host     : $($Host.PadRight(41)) │" -ForegroundColor Green
-    Write-Host "  │  Dir      : $($RemoteDir.PadRight(41)) │" -ForegroundColor Green
-    Write-Host "  ├──────────────────────────────────────────────────────┤" -ForegroundColor Green
-    Write-Host "  │  Next steps:                                         │" -ForegroundColor Green
-    Write-Host "  │  1. Open $resolvedAppUrl" -ForegroundColor Green
-    Write-Host "  │  2. Click ⚙ Settings                                 │" -ForegroundColor Green
-    Write-Host "  │  3. Enter Google / Microsoft OAuth credentials       │" -ForegroundColor Green
-    Write-Host "  │  4. Register the redirect URIs shown in Settings     │" -ForegroundColor Green
-    Write-Host "  └──────────────────────────────────────────────────────┘" -ForegroundColor Green
+    Write-Host "  ======================================================" -ForegroundColor Green
+    Write-Host "  Deployment complete [OK]" -ForegroundColor Green
+    Write-Host "  ------------------------------------------------------" -ForegroundColor Green
+    Write-Host "  App URL  : $resolvedAppUrl" -ForegroundColor Green
+    Write-Host "  Host     : $TargetHost" -ForegroundColor Green
+    Write-Host "  Dir      : $RemoteDir" -ForegroundColor Green
+    Write-Host "  ------------------------------------------------------" -ForegroundColor Green
+    Write-Host "  Next steps:" -ForegroundColor Green
+    Write-Host "  1. Open $resolvedAppUrl" -ForegroundColor Green
+    Write-Host "  2. Click Settings" -ForegroundColor Green
+    Write-Host "  3. Enter Google / Microsoft OAuth credentials" -ForegroundColor Green
+    Write-Host "  4. Register the redirect URIs shown in Settings" -ForegroundColor Green
+    Write-Host "  ======================================================" -ForegroundColor Green
     Write-Host ""
 }
 
-# ── Main ───────────────────────────────────────────────────────
+# -- Main ---------------------------------------------------------
 function Main {
     Write-Banner
 
-    Write-Host "  Target  : ${User}@${Host}" -ForegroundColor DarkGray
+    Write-Host "  Target  : ${User}@${TargetHost}" -ForegroundColor DarkGray
     Write-Host "  Dir     : ${RemoteDir}"    -ForegroundColor DarkGray
     Write-Host "  Port    : ${Port}"         -ForegroundColor DarkGray
     Write-Host "  Branch  : ${Branch}"       -ForegroundColor DarkGray
@@ -316,6 +382,7 @@ function Main {
 
         Sync-Repository
         Write-EnvFile
+        Remove-PreviousContainer -ComposeCmd $composeCmd
         Start-Container -ComposeCmd $composeCmd
         Test-Health
         Show-Logs -ComposeCmd $composeCmd
