@@ -1,6 +1,8 @@
 docs/secrets.txt
 docs/
 data/
+electron/build/
+electron/dist/
 
 # Logs
 logs

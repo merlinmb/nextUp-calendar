@@ -3,7 +3,6 @@
 const REFRESH_MS = 15 * 60 * 1000; // 15 minutes
 
 const bodyEl = document.getElementById('widget-body');
-const syncEl = document.getElementById('sync-status');
 
 // ── Date helpers ──────────────────────────────────────────────
 
@@ -138,19 +137,20 @@ let lastSyncedAt = null;
 
 async function fetchEvents() {
   const serverUrl = window.electronAPI.serverUrl;
+  const url = `${serverUrl}/jsonCalendar?timeframe=2d`;
+  console.log(`[fetch] GET ${url}`);
   try {
-    const resp = await fetch(`${serverUrl}/jsonCalendar?timeframe=2d`);
+    const resp = await fetch(url);
+    console.log(`[fetch] response status=${resp.status} ok=${resp.ok}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+    console.log(`[fetch] received ${(data.events || []).length} events`);
 
     renderEvents(data.events || []);
 
     lastSyncedAt = new Date();
-    syncEl.className = 'widget-synced';
-    syncEl.textContent = lastSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch (err) {
-    syncEl.className = 'widget-error';
-    syncEl.textContent = 'unreachable';
+    console.error(`[fetch] failed: ${err.message}`);
 
     if (!lastSyncedAt) {
       bodyEl.innerHTML = '<div class="widget-status">Can\'t reach server</div>';
@@ -158,8 +158,23 @@ async function fetchEvents() {
   }
 }
 
+// ── Background clock ──────────────────────────────────────────
+
+const clockEl = document.getElementById('bg-clock');
+
+function tickClock() {
+  const now  = new Date();
+  const h    = String(now.getHours()).padStart(2, '0');
+  const m    = String(now.getMinutes()).padStart(2, '0');
+  clockEl.textContent = `${h}:${m}`;
+}
+
+tickClock();
+setInterval(tickClock, 5000); // update every 5 s — no need for per-second redraws
+
 // ── Init ──────────────────────────────────────────────────────
 
+console.log(`[init] serverUrl=${window.electronAPI.serverUrl}`);
 fetchEvents();
 setInterval(fetchEvents, REFRESH_MS);
 

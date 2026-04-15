@@ -284,33 +284,52 @@ Or with the PowerShell script:
 
 ## Electron Desktop Widget
 
-A lightweight always-on-top desktop widget that shows today's and tomorrow's events, powered by the `/jsonCalendar` feed.
+A lightweight always-on-top desktop widget that shows today's and tomorrow's events, powered by the `/jsonCalendar` feed. Features a large background clock watermark behind the event list.
 
-### Setup
+### Pre-built exe
+
+A portable single-file exe is built to `electron/dist/nextup-calendar.exe` — no installer, no admin rights required. Copy it (or a shortcut) to `shell:startup` to run on login:
+
+```powershell
+copy "electron\dist\nextup-calendar.exe" "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\"
+```
+
+### Build from source
 
 ```bash
 cd electron
 cp .env.example .env
-# Set SERVER_URL to your nextUp server address
+# Edit .env — set SERVER_URL to your nextUp server address
 npm install
+npm run build
+# Output: electron/dist/nextup-calendar.exe
+```
+
+### Development (no compile step)
+
+```bash
+cd electron
 npm start
 ```
 
 ### Behaviour
 
-- **Always-on-top** frameless widget, 320×480px, positioned bottom-right of your screen
-- **System tray icon** - click to show/hide; right-click for Refresh / Quit
-- **Auto-refreshes** every 15 minutes; also refreshes each time you show it
+- **Always-on-top** frameless widget, 320×480px, positioned bottom-right by default
+- **Window position is saved** — drag it anywhere, position is restored on next launch
+- **Single instance** — launching a second copy focuses the existing window instead
+- **System tray icon** — left-click to show/hide; right-click for Refresh / Exit
+- **Auto-refreshes** every 15 minutes; also refreshes each time the widget is shown via the tray
 - **Dark theme** matching the web app design system
-- Drag the widget by its header bar to reposition it
 
 ### Configuration
 
-`electron/.env`:
+`electron/.env` (baked into the exe at build time):
 
 ```bash
-SERVER_URL=http://homebridge.local:3050
+SERVER_URL=https://your-nextup-server
 ```
+
+> If you change `SERVER_URL`, re-run `npm run build` to produce an updated exe.
 
 ---
 

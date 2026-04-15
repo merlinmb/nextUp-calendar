@@ -83,8 +83,8 @@ html, body {
 
 .day-date {
   font-size: var(--fs-xs);
-  color: var(--text-3);
-  font-family: var(--font-mono);
+  color: #ffffff;
+  font-family: var(--font-sans);
 }
 
 /* Reuse web app event-row styles — override spacing for widget */
@@ -127,6 +127,38 @@ html, body {
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-xs);
   color: var(--text-3);
+}
+
+/* Background clock */
+#bg-clock {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  width: 100%;
+  text-align: right;
+  padding-right: 8px;
+  font-size: 108px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text-1);
+  opacity: 0.18;
+  pointer-events: none;
+  user-select: none;
+  -webkit-app-region: no-drag;
+  z-index: 0;
+  white-space: nowrap;
+}
+
+/* Ensure header and body content sit above the clock */
+.widget-header {
+  position: relative;
+  z-index: 1;
+}
+
+.widget-body {
+  position: relative;
+  z-index: 1;
 }
 
 /* Loading / error state */

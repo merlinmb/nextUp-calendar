@@ -3,11 +3,50 @@
   "version": "1.0.0",
   "description": "Always-on-top desktop widget for nextUp Calendar",
   "main": "main.js",
+  "author": "merlinmb",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "prebuild": "node -e \"require('fs').copyFileSync('../public/css/app.css','app.css'); require('dotenv').config({path:'.env'}); require('fs').writeFileSync('config.json',JSON.stringify({SERVER_URL:process.env.SERVER_URL||'http://homebridge.local:3050'}));\"",
+    "build": "electron-builder --win portable"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "electron": "^30.0.0"
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.mcmdhome.nextup-calendar-widget",
+    "productName": "nextUp Calendar",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "renderer.js",
+      "renderer.css",
+      "app.css",
+      "config.json",
+      "tray-icon.png",
+      "node_modules/**/*",
+      "!node_modules/electron/**/*",
+      "!node_modules/electron-builder/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "nextup-calendar.exe"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "asar": true
   }
 }
