@@ -24,11 +24,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3050"
-      # Public URL used to build OAuth callback URIs.
-      # Change this if your homebridge host uses a different name or port.
-      APP_URL: ${APP_URL:-http://homebridge.local:3050}
     env_file:
-      # Optional .env file — used for SESSION_SECRET override etc.
+      # .env must define APP_URL (and optionally SESSION_SECRET)
       - path: .env
         required: false
     healthcheck:
