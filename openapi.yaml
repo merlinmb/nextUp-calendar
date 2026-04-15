@@ -1,0 +1,323 @@
+openapi: "3.0.3"
+info:
+  title: nextUp Calendar API
+  version: "1.0.0"
+  description: |
+    API for pushing calendar events to the nextUp Calendar server from
+    external automation tools such as Microsoft Power Automate.
+
+    All endpoints require a Bearer token in the Authorization header.
+    Two tokens exist:
+    - **Write token** (API_WRITE_TOKEN): for POST /events
+    - **Read token** (API_READ_TOKEN): for GET /jsonCalendar
+
+servers:
+  - url: "{baseUrl}"
+    variables:
+      baseUrl:
+        default: "http://homebridge.local:3050"
+        description: The base URL of your nextUp Calendar server
+
+components:
+  securitySchemes:
+    WriteToken:
+      type: http
+      scheme: bearer
+      description: API_WRITE_TOKEN — grants write access to push events
+    ReadToken:
+      type: http
+      scheme: bearer
+      description: API_READ_TOKEN — grants read access to the JSON feed
+
+  schemas:
+    Recurrence:
+      type: object
+      description: Optional recurrence rule. Omit for once-off events.
+      properties:
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly, yearly]
+          description: How often the event repeats
+        daysOfWeek:
+          type: array
+          items:
+            type: string
+            enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+          description: Which days to repeat on (weekly recurrence only)
+        interval:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Repeat every N frequency units (e.g. 2 = every 2 weeks)
+        count:
+          type: integer
+          minimum: 1
+          maximum: 365
+          description: Stop after N occurrences (capped at 365)
+        until:
+          type: string
+          format: date
+          description: Stop expanding after this date (ISO 8601). Used instead of or alongside count.
+
+    CalendarEvent:
+      type: object
+      required: [id, title, start, end]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this event (string, your choice)
+          example: "pa_standup_001"
+        title:
+          type: string
+          description: Event title / summary
+          example: "Weekly standup"
+        start:
+          type: string
+          description: |
+            Start datetime as ISO 8601. For all-day events use YYYY-MM-DD.
+            For timed events use YYYY-MM-DDTHH:MM:SS (local) or with timezone offset.
+          example: "2026-04-20T09:00:00"
+        end:
+          type: string
+          description: |
+            End datetime. Same format rules as start.
+            For all-day single-day events, start and end should be the same date.
+          example: "2026-04-20T09:30:00"
+        isAllDay:
+          type: boolean
+          default: false
+          description: Set to true for all-day and multi-day events
+        location:
+          type: string
+          description: Optional location string
+          example: "Teams"
+        calendarName:
+          type: string
+          description: Optional calendar label shown in the widget
+          example: "Work"
+        recurrence:
+          $ref: "#/components/schemas/Recurrence"
+
+    PushEventsRequest:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarEvent"
+          description: |
+            Array of calendar events. Each POST **replaces** all previously pushed events —
+            send the complete desired set each time.
+
+    PushEventsResponse:
+      type: object
+      properties:
+        accepted:
+          type: integer
+          description: Number of event objects received in the payload
+        expanded:
+          type: integer
+          description: Number of those that had a recurrence rule and were expanded
+        stored:
+          type: integer
+          description: Total number of event instances now in the cache (after expansion)
+
+    CalendarFeedEvent:
+      type: object
+      properties:
+        id:       { type: string }
+        title:    { type: string }
+        start:    { type: string }
+        end:      { type: string }
+        isAllDay: { type: boolean }
+        location: { type: string }
+        calendarName: { type: string }
+        source:
+          type: string
+          enum: [google, microsoft, external]
+
+    CalendarFeedResponse:
+      type: object
+      properties:
+        generated: { type: string, format: date-time }
+        timeframe:  { type: string, example: "7d" }
+        from:       { type: string, format: date-time }
+        to:         { type: string, format: date-time }
+        count:      { type: integer }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarFeedEvent"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items: { type: string }
+
+paths:
+  /events:
+    post:
+      summary: Push calendar events
+      description: |
+        Accepts a batch of calendar events from Power Automate (or any HTTP client).
+        Replaces all previously pushed external events — send the complete desired set each time.
+
+        Events with a `recurrence` field are automatically expanded into individual instances.
+        Events without `recurrence` are stored as-is.
+
+        **Supported event types:**
+        - Once-off timed events
+        - All-day single-day events (`isAllDay: true`, `start` and `end` same date)
+        - Multi-day all-day events (`isAllDay: true`, `end` after `start`)
+        - Recurring events (daily, weekly, monthly, yearly) with optional daysOfWeek/interval/count/until
+      security:
+        - WriteToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushEventsRequest"
+            examples:
+              once_off:
+                summary: Single once-off timed event
+                value:
+                  events:
+                    - id: "pa_meeting_001"
+                      title: "Project kickoff"
+                      start: "2026-05-01T10:00:00"
+                      end: "2026-05-01T11:00:00"
+                      isAllDay: false
+                      location: "Conference room A"
+                      calendarName: "Work"
+              all_day:
+                summary: All-day public holiday
+                value:
+                  events:
+                    - id: "pa_holiday_anzac"
+                      title: "ANZAC Day"
+                      start: "2026-04-25"
+                      end: "2026-04-25"
+                      isAllDay: true
+                      calendarName: "Public Holidays"
+              multi_day:
+                summary: Multi-day all-day event
+                value:
+                  events:
+                    - id: "pa_leave_001"
+                      title: "Annual leave"
+                      start: "2026-05-11"
+                      end: "2026-05-15"
+                      isAllDay: true
+                      calendarName: "Work"
+              recurring_weekly:
+                summary: Weekly recurring event
+                value:
+                  events:
+                    - id: "pa_standup_weekly"
+                      title: "Weekly standup"
+                      start: "2026-04-21T09:00:00"
+                      end: "2026-04-21T09:30:00"
+                      isAllDay: false
+                      calendarName: "Work"
+                      recurrence:
+                        frequency: weekly
+                        daysOfWeek: [monday]
+                        count: 12
+              mixed:
+                summary: Mix of once-off and recurring in one request
+                value:
+                  events:
+                    - id: "pa_holiday_001"
+                      title: "Queens Birthday"
+                      start: "2026-06-08"
+                      end: "2026-06-08"
+                      isAllDay: true
+                    - id: "pa_standup"
+                      title: "Standup"
+                      start: "2026-04-21T09:00:00"
+                      end: "2026-04-21T09:15:00"
+                      recurrence:
+                        frequency: daily
+                        count: 5
+      responses:
+        "200":
+          description: Events accepted and stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushEventsResponse"
+              example:
+                accepted: 2
+                expanded: 1
+                stored: 6
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jsonCalendar:
+    get:
+      summary: Read upcoming calendar events as JSON
+      description: |
+        Returns events from the in-memory cache for the specified timeframe window,
+        starting from now. Includes events from Google, Microsoft, and any
+        externally pushed events.
+      security:
+        - ReadToken: []
+      parameters:
+        - name: timeframe
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d+[hdm]$"
+          description: |
+            How far forward to fetch. Format: `<N><unit>` where unit is:
+            - `h` = hours
+            - `d` = days
+            - `m` = months (approximated as 30-day months)
+
+            Maximum: 12m. Requests beyond this are capped silently.
+          examples:
+            two_days:
+              value: "2d"
+              summary: Next 2 days (Electron widget default)
+            one_week:
+              value: "7d"
+              summary: Next 7 days
+            three_months:
+              value: "3m"
+              summary: Next 3 months
+      responses:
+        "200":
+          description: Calendar events for the requested window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarFeedResponse"
+        "400":
+          description: Missing or malformed timeframe parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid read token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
