@@ -1,0 +1,140 @@
+/* ── Widget chrome ────────────────────────────────────────────
+   Loaded after ../public/css/app.css — extends its tokens.
+   ─────────────────────────────────────────────────────────── */
+
+html, body {
+  width:    320px;
+  height:   480px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+/* Widget header bar */
+.widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 var(--sp-4);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.widget-wordmark {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.widget-synced {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+.widget-error {
+  font-size: var(--fs-xs);
+  color: var(--accent-red);
+}
+
+/* Scrollable events area */
+.widget-body {
+  height: calc(480px - 36px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sp-2) 0 var(--sp-4);
+  -webkit-app-region: no-drag;
+}
+
+.widget-body::-webkit-scrollbar { width: 4px; }
+.widget-body::-webkit-scrollbar-track { background: transparent; }
+.widget-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+/* Day section header */
+.day-section {
+  margin-bottom: var(--sp-2);
+}
+
+.day-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+
+.day-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.day-label.is-today {
+  color: var(--accent-today);
+}
+
+.day-date {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+/* Reuse web app event-row styles — override spacing for widget */
+.event-row {
+  padding: var(--sp-1) var(--sp-4);
+  gap: var(--sp-2);
+  min-height: 32px;
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.event-row:hover {
+  background: var(--bg-hover);
+}
+
+.event-row-time {
+  min-width: 36px;
+  font-size: var(--fs-xs);
+}
+
+.event-row-title {
+  font-size: var(--fs-sm);
+}
+
+.event-row-meta {
+  font-size: var(--fs-xs);
+}
+
+/* All-day strip */
+.allday-strip {
+  padding: 0 var(--sp-4) var(--sp-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+/* Empty day */
+.day-empty {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* Loading / error state */
+.widget-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
