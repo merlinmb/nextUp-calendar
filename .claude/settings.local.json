@@ -5,7 +5,8 @@
       "Bash(node -e \"const c=require\\('crypto'\\); console.log\\('READ:',c.randomBytes\\(32\\).toString\\('hex'\\)\\); console.log\\('WRITE:',c.randomBytes\\(32\\).toString\\('hex'\\)\\);\")",
       "Bash(gh repo *)",
       "Bash(gh api *)",
-      "WebFetch(domain:calendar.mcmdhome.com)"
+      "WebFetch(domain:calendar.mcmdhome.com)",
+      "Bash(npm install *)"
     ],
     "additionalDirectories": [
       "e:\\GoogleDrive\\Arduino\\nextUp-calendar"

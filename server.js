@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
 const helmet  = require('helmet');
 const path    = require('path');
 const fs      = require('fs');
@@ -75,6 +76,7 @@ if (fs.existsSync(secretFile)) {
 
 app.use(
   session({
+    store: new MemoryStore({ checkPeriod: 86400000 }), // prune expired sessions every 24h
     secret: process.env.SESSION_SECRET || sessionSecret,
     resave: false,
     saveUninitialized: false,
