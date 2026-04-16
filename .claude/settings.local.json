@@ -6,7 +6,10 @@
       "Bash(gh repo *)",
       "Bash(gh api *)",
       "WebFetch(domain:calendar.mcmdhome.com)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -H \"Authorization: Bearer 804d27450beff442b6c4ca49cd056619b9708d8d99e6a52b436fa4d9bfbc3b98\" \"https://calendar.mcmdhome.com/jsonCalendar?timeframe=2d\")",
+      "Bash(curl -sv -H \"Authorization: Bearer 804d27450beff442b6c4ca49cd056619b9708d8d99e6a52b436fa4d9bfbc3b98\" \"https://calendar.mcmdhome.com/jsonCalendar?timeframe=2d\")",
+      "Bash(curl -s \"https://calendar.mcmdhome.com/health\")"
     ],
     "additionalDirectories": [
       "e:\\GoogleDrive\\Arduino\\nextUp-calendar"
