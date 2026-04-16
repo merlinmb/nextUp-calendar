@@ -39,9 +39,14 @@ ipcMain.handle('config:save', (_e, overrides) => {
   if (typeof overrides.refreshMs === 'number' && overrides.refreshMs >= 60000) {
     clean.refreshMs = overrides.refreshMs;
   }
-  fs.writeFileSync(userConfigPath(), JSON.stringify(clean, null, 2), 'utf8');
-  log(`Saved user config: ${JSON.stringify(clean)}`);
-  return { ok: true };
+  try {
+    fs.writeFileSync(userConfigPath(), JSON.stringify(clean, null, 2), 'utf8');
+    log(`Saved user config: ${JSON.stringify(clean)}`);
+    return { ok: true };
+  } catch (err) {
+    log(`Failed to save user config: ${err.message}`);
+    return { ok: false, error: err.message };
+  }
 });
 
 let win;
