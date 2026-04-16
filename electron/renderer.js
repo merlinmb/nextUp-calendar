@@ -195,6 +195,8 @@ function showSettings() {
   tokenInput.value   = activeReadToken !== window.electronAPI.readToken
     ? activeReadToken   // show override if one is set
     : '';               // blank = "using default"
+  tokenInput.type        = 'password';
+  revealBtn.textContent  = '\u{1F441}';
   refreshInput.value = Math.round(activeRefreshMs / 60000);
   statusEl.textContent = '';
   statusEl.className   = 'settings-status';
@@ -243,10 +245,11 @@ saveBtn.addEventListener('click', async () => {
   if (!isNaN(refreshVal) && refreshVal >= 1) overrides.refreshMs = refreshVal * 60 * 1000;
 
   try {
-    await window.electronAPI.saveConfig(overrides);
+    const result = await window.electronAPI.saveConfig(overrides);
+    if (!result.ok) throw new Error(result.error || 'Save failed');
 
-    // Apply overrides live
-    if (typeof overrides.readToken === 'string') activeReadToken = overrides.readToken;
+    // Apply overrides live; empty token reverts to compiled default
+    activeReadToken = tokenVal || window.electronAPI.readToken;
     if (typeof overrides.refreshMs === 'number') {
       activeRefreshMs = overrides.refreshMs;
       startRefreshTimer();
