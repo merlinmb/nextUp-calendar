@@ -19,11 +19,51 @@
   <!-- Header bar -->
   <div class="widget-header">
     <span class="widget-wordmark">nextUp</span>
+    <button class="gear-btn" id="gear-btn" title="Settings" aria-label="Open settings">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
+                 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33
+                 l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4
+                 h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06
+                 A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51
+                 a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9
+                 a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Scrollable events body -->
   <div class="widget-body" id="widget-body">
     <div class="widget-status" id="loading-msg">Loading&hellip;</div>
+  </div>
+
+  <!-- Settings panel (hidden by default) -->
+  <div class="settings-panel" id="settings-panel" hidden>
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-field">
+      <label class="settings-label" for="cfg-token">Calendar API Token</label>
+      <input class="settings-input" id="cfg-token" type="password"
+             placeholder="Leave blank to use default" autocomplete="off" spellcheck="false">
+      <button class="settings-reveal-btn" id="cfg-token-reveal" type="button" aria-label="Show token">
+        &#128065;
+      </button>
+    </div>
+
+    <div class="settings-field">
+      <label class="settings-label" for="cfg-refresh">Refresh interval (minutes)</label>
+      <input class="settings-input settings-input--short" id="cfg-refresh" type="number"
+             min="1" max="60" step="1" placeholder="15">
+    </div>
+
+    <div class="settings-actions">
+      <button class="settings-btn settings-btn--cancel" id="cfg-cancel">Cancel</button>
+      <button class="settings-btn settings-btn--save"   id="cfg-save">Save</button>
+    </div>
+
+    <div class="settings-status" id="cfg-status"></div>
   </div>
 
   <script src="renderer.js"></script>
