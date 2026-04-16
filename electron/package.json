@@ -17,7 +17,7 @@
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
-    "electron": "^30.0.0",
+    "electron": "^40.9.1",
     "electron-builder": "^24.13.3"
   },
   "build": {
@@ -41,7 +41,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
