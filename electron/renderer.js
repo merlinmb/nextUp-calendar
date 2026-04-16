@@ -1,8 +1,10 @@
 'use strict';
 
 const DEFAULT_REFRESH_MS = 15 * 60 * 1000; // 15 minutes
+const DEFAULT_SERVER_URL = normalizeServerUrl(window.electronAPI.serverUrl);
 
 // Runtime values — may be overridden by user-config.json
+let activeServerUrl = DEFAULT_SERVER_URL;
 let activeReadToken = window.electronAPI.readToken;
 let activeRefreshMs = DEFAULT_REFRESH_MS;
 let refreshTimer    = null;
@@ -10,6 +12,7 @@ let refreshTimer    = null;
 const bodyEl       = document.getElementById('widget-body');
 const settingsEl   = document.getElementById('settings-panel');
 const gearBtn      = document.getElementById('gear-btn');
+const serverInput  = document.getElementById('cfg-server');
 const tokenInput   = document.getElementById('cfg-token');
 const revealBtn    = document.getElementById('cfg-token-reveal');
 const refreshInput = document.getElementById('cfg-refresh');
@@ -47,6 +50,33 @@ function formatHeaderDate(dateStr) {
   const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function normalizeServerUrl(value, baseServerUrl = window.electronAPI.serverUrl) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+
+  const baseUrl = new URL(baseServerUrl);
+  let parsedUrl;
+
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
+    parsedUrl = new URL(raw);
+  } else if (raw.includes('/')) {
+    parsedUrl = new URL(`${baseUrl.protocol}//${raw}`);
+  } else {
+    parsedUrl = new URL(baseServerUrl);
+    parsedUrl.host = raw;
+  }
+
+  if (!/^https?:$/.test(parsedUrl.protocol)) {
+    throw new Error('Server must use http or https');
+  }
+
+  const normalizedPath = parsedUrl.pathname === '/'
+    ? ''
+    : parsedUrl.pathname.replace(/\/+$/, '');
+
+  return `${parsedUrl.origin}${normalizedPath}`;
 }
 
 // ── Render ────────────────────────────────────────────────────
@@ -149,7 +179,7 @@ function renderEvents(events) {
 let lastSyncedAt = null;
 
 async function fetchEvents() {
-  const serverUrl = window.electronAPI.serverUrl;
+  const serverUrl = activeServerUrl;
   const readToken = activeReadToken;
   const url = `${serverUrl}/jsonCalendar?timeframe=2d`;
   console.log(`[fetch] GET ${url}`);
@@ -192,6 +222,8 @@ setInterval(tickClock, 5000); // update every 5 s — no need for per-second red
 
 function showSettings() {
   // Populate fields with current active values
+  serverInput.value  = activeServerUrl !== DEFAULT_SERVER_URL ? activeServerUrl : '';
+  serverInput.placeholder = DEFAULT_SERVER_URL;
   tokenInput.value   = activeReadToken !== window.electronAPI.readToken
     ? activeReadToken   // show override if one is set
     : '';               // blank = "using default"
@@ -229,8 +261,21 @@ saveBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Saving\u2026';
   statusEl.className   = 'settings-status';
 
+  const serverVal  = serverInput.value.trim();
   const tokenVal   = tokenInput.value.trim();
   const refreshVal = parseInt(refreshInput.value, 10);
+  let normalizedServerUrl = '';
+
+  if (serverVal) {
+    try {
+      normalizedServerUrl = normalizeServerUrl(serverVal, DEFAULT_SERVER_URL);
+    } catch (err) {
+      statusEl.textContent = 'Server must be a valid hostname or http(s) URL.';
+      statusEl.className   = 'settings-status error';
+      saveBtn.disabled = false;
+      return;
+    }
+  }
 
   if (refreshInput.value !== '' && (isNaN(refreshVal) || refreshVal < 1 || refreshVal > 60)) {
     statusEl.textContent = 'Refresh must be 1\u201360 minutes.';
@@ -240,6 +285,7 @@ saveBtn.addEventListener('click', async () => {
   }
 
   const overrides = {};
+  if (normalizedServerUrl) overrides.serverUrl = normalizedServerUrl;
   // Only save non-empty token overrides
   if (tokenVal) overrides.readToken = tokenVal;
   if (!isNaN(refreshVal) && refreshVal >= 1) overrides.refreshMs = refreshVal * 60 * 1000;
@@ -249,6 +295,7 @@ saveBtn.addEventListener('click', async () => {
     if (!result.ok) throw new Error(result.error || 'Save failed');
 
     // Apply overrides live; empty token reverts to compiled default
+    activeServerUrl = normalizedServerUrl || DEFAULT_SERVER_URL;
     activeReadToken = tokenVal || window.electronAPI.readToken;
     if (typeof overrides.refreshMs === 'number') {
       activeRefreshMs = overrides.refreshMs;
@@ -269,14 +316,15 @@ saveBtn.addEventListener('click', async () => {
 // ── Init ──────────────────────────────────────────────────────
 
 async function init() {
-  console.log(`[init] serverUrl=${window.electronAPI.serverUrl}`);
+  console.log(`[init] defaultServerUrl=${DEFAULT_SERVER_URL}`);
 
   // Load persisted overrides before first fetch
   try {
     const saved = await window.electronAPI.loadConfig();
+    if (saved.serverUrl)  activeServerUrl = normalizeServerUrl(saved.serverUrl, DEFAULT_SERVER_URL);
     if (saved.readToken)  activeReadToken = saved.readToken;
     if (saved.refreshMs)  activeRefreshMs = saved.refreshMs;
-    console.log(`[init] loaded user-config: token=${saved.readToken ? 'set' : 'default'} refreshMs=${saved.refreshMs || 'default'}`);
+    console.log(`[init] loaded user-config: serverUrl=${saved.serverUrl || 'default'} token=${saved.readToken ? 'set' : 'default'} refreshMs=${saved.refreshMs || 'default'}`);
   } catch (err) {
     console.warn('[init] could not load user-config:', err.message);
   }

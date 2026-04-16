@@ -35,6 +35,20 @@ ipcMain.handle('config:load', () => loadUserConfig());
 ipcMain.handle('config:save', (_e, overrides) => {
   // Validate: only accept known keys with correct types
   const clean = {};
+  if (typeof overrides.serverUrl === 'string' && overrides.serverUrl.trim()) {
+    try {
+      const parsedUrl = new URL(overrides.serverUrl.trim());
+      if (!/^https?:$/.test(parsedUrl.protocol)) {
+        return { ok: false, error: 'Server URL must use http or https' };
+      }
+      const normalizedPath = parsedUrl.pathname === '/'
+        ? ''
+        : parsedUrl.pathname.replace(/\/+$/, '');
+      clean.serverUrl = `${parsedUrl.origin}${normalizedPath}`;
+    } catch {
+      return { ok: false, error: 'Server URL is invalid' };
+    }
+  }
   if (typeof overrides.readToken === 'string') clean.readToken = overrides.readToken.trim();
   if (typeof overrides.refreshMs === 'number' && overrides.refreshMs >= 60000) {
     clean.refreshMs = overrides.refreshMs;
