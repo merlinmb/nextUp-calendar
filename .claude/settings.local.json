@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node -e \"const c=require\\('crypto'\\); console.log\\('READ:',c.randomBytes\\(32\\).toString\\('hex'\\)\\); console.log\\('WRITE:',c.randomBytes\\(32\\).toString\\('hex'\\)\\);\")",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:calendar.mcmdhome.com)"
     ],
     "additionalDirectories": [
       "e:\\GoogleDrive\\Arduino\\nextUp-calendar"
