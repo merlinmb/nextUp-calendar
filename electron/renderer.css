@@ -170,3 +170,158 @@ html, body {
   font-size: var(--fs-sm);
   color: var(--text-3);
 }
+
+/* ── Gear button ────────────────────────────────────────────── */
+.gear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: color var(--t-fast), background var(--t-fast);
+  flex-shrink: 0;
+}
+
+.gear-btn:hover {
+  color: var(--text-1);
+  background: var(--bg-hover);
+}
+
+.gear-btn:active {
+  background: var(--bg-active);
+}
+
+/* ── Settings panel ─────────────────────────────────────────── */
+.settings-panel {
+  position: absolute;
+  inset: 36px 0 0 0;      /* sits below the header bar */
+  background: var(--bg-surface);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  gap: var(--sp-4);
+  -webkit-app-region: no-drag;
+}
+
+/* hidden attribute hides it completely */
+.settings-panel[hidden] { display: none; }
+
+.settings-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semi);
+  color: var(--text-1);
+  margin-bottom: var(--sp-1);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  position: relative;
+}
+
+.settings-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color var(--t-fast);
+}
+
+.settings-input:focus {
+  border-color: var(--border-focus);
+}
+
+.settings-input--short {
+  width: 80px;
+  font-family: var(--font-sans);
+}
+
+/* Show/hide toggle for token field */
+.settings-reveal-btn {
+  position: absolute;
+  right: var(--sp-2);
+  bottom: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 2px 4px;
+  line-height: 1;
+  -webkit-app-region: no-drag;
+}
+
+.settings-reveal-btn:hover { color: var(--text-1); }
+
+/* Shift input text so it doesn't overlap the reveal button */
+#cfg-token { padding-right: 32px; }
+
+.settings-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.settings-btn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: none;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.settings-btn--cancel {
+  background: var(--bg-raised);
+  color: var(--text-2);
+}
+
+.settings-btn--cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.settings-btn--save {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.settings-btn--save:hover {
+  filter: brightness(1.15);
+}
+
+.settings-status {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  min-height: 16px;
+  text-align: center;
+}
+
+.settings-status.error { color: var(--accent-red); }
+.settings-status.success { color: var(--accent-teal); }
