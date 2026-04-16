@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   serverUrl,
   readToken,
   onRefresh: (cb) => ipcRenderer.on('ipc:do-refresh', cb),
+  loadConfig:  ()          => ipcRenderer.invoke('config:load'),
+  saveConfig:  (overrides) => ipcRenderer.invoke('config:save', overrides),
 });
