@@ -7,7 +7,7 @@ const fs   = require('fs');
 // the asar — readable by fs inside the archive at __dirname.
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 
-const { app, BrowserWindow, Tray, Menu, screen, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, nativeImage, ipcMain } = require('electron');
 
 const WIDGET_W = 320;
 const WIDGET_H = 480;
@@ -16,6 +16,33 @@ const WIDGET_H = 480;
 function posFile() {
   return path.join(app.getPath('userData'), 'window-position.json');
 }
+
+function userConfigPath() {
+  return path.join(app.getPath('userData'), 'user-config.json');
+}
+
+function loadUserConfig() {
+  try {
+    const raw = fs.readFileSync(userConfigPath(), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+ipcMain.handle('config:load', () => loadUserConfig());
+
+ipcMain.handle('config:save', (_e, overrides) => {
+  // Validate: only accept known keys with correct types
+  const clean = {};
+  if (typeof overrides.readToken === 'string') clean.readToken = overrides.readToken.trim();
+  if (typeof overrides.refreshMs === 'number' && overrides.refreshMs >= 60000) {
+    clean.refreshMs = overrides.refreshMs;
+  }
+  fs.writeFileSync(userConfigPath(), JSON.stringify(clean, null, 2), 'utf8');
+  log(`Saved user config: ${JSON.stringify(clean)}`);
+  return { ok: true };
+});
 
 let win;
 let tray;
