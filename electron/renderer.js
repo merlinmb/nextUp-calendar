@@ -1,8 +1,21 @@
 'use strict';
 
-const REFRESH_MS = 15 * 60 * 1000; // 15 minutes
+const DEFAULT_REFRESH_MS = 15 * 60 * 1000; // 15 minutes
 
-const bodyEl = document.getElementById('widget-body');
+// Runtime values — may be overridden by user-config.json
+let activeReadToken = window.electronAPI.readToken;
+let activeRefreshMs = DEFAULT_REFRESH_MS;
+let refreshTimer    = null;
+
+const bodyEl       = document.getElementById('widget-body');
+const settingsEl   = document.getElementById('settings-panel');
+const gearBtn      = document.getElementById('gear-btn');
+const tokenInput   = document.getElementById('cfg-token');
+const revealBtn    = document.getElementById('cfg-token-reveal');
+const refreshInput = document.getElementById('cfg-refresh');
+const cancelBtn    = document.getElementById('cfg-cancel');
+const saveBtn      = document.getElementById('cfg-save');
+const statusEl     = document.getElementById('cfg-status');
 
 // ── Date helpers ──────────────────────────────────────────────
 
@@ -137,7 +150,7 @@ let lastSyncedAt = null;
 
 async function fetchEvents() {
   const serverUrl = window.electronAPI.serverUrl;
-  const readToken = window.electronAPI.readToken;
+  const readToken = activeReadToken;
   const url = `${serverUrl}/jsonCalendar?timeframe=2d`;
   console.log(`[fetch] GET ${url}`);
   try {
@@ -175,11 +188,100 @@ function tickClock() {
 tickClock();
 setInterval(tickClock, 5000); // update every 5 s — no need for per-second redraws
 
+// ── Settings panel ────────────────────────────────────────────
+
+function showSettings() {
+  // Populate fields with current active values
+  tokenInput.value   = activeReadToken !== window.electronAPI.readToken
+    ? activeReadToken   // show override if one is set
+    : '';               // blank = "using default"
+  refreshInput.value = Math.round(activeRefreshMs / 60000);
+  statusEl.textContent = '';
+  statusEl.className   = 'settings-status';
+
+  bodyEl.hidden     = true;
+  settingsEl.hidden = false;
+}
+
+function hideSettings() {
+  settingsEl.hidden = true;
+  bodyEl.hidden     = false;
+}
+
+function startRefreshTimer() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(fetchEvents, activeRefreshMs);
+}
+
+gearBtn.addEventListener('click', showSettings);
+cancelBtn.addEventListener('click', hideSettings);
+
+revealBtn.addEventListener('click', () => {
+  const isPassword = tokenInput.type === 'password';
+  tokenInput.type = isPassword ? 'text' : 'password';
+  revealBtn.textContent = isPassword ? '\u{1F648}' : '\u{1F441}';
+});
+
+saveBtn.addEventListener('click', async () => {
+  saveBtn.disabled = true;
+  statusEl.textContent = 'Saving\u2026';
+  statusEl.className   = 'settings-status';
+
+  const tokenVal   = tokenInput.value.trim();
+  const refreshVal = parseInt(refreshInput.value, 10);
+
+  if (refreshInput.value !== '' && (isNaN(refreshVal) || refreshVal < 1 || refreshVal > 60)) {
+    statusEl.textContent = 'Refresh must be 1\u201360 minutes.';
+    statusEl.className   = 'settings-status error';
+    saveBtn.disabled = false;
+    return;
+  }
+
+  const overrides = {};
+  // Only save non-empty token overrides
+  if (tokenVal) overrides.readToken = tokenVal;
+  if (!isNaN(refreshVal) && refreshVal >= 1) overrides.refreshMs = refreshVal * 60 * 1000;
+
+  try {
+    await window.electronAPI.saveConfig(overrides);
+
+    // Apply overrides live
+    if (typeof overrides.readToken === 'string') activeReadToken = overrides.readToken;
+    if (typeof overrides.refreshMs === 'number') {
+      activeRefreshMs = overrides.refreshMs;
+      startRefreshTimer();
+    }
+
+    hideSettings();
+    fetchEvents();
+  } catch (err) {
+    console.error('[settings] save failed:', err);
+    statusEl.textContent = 'Save failed. Check logs.';
+    statusEl.className   = 'settings-status error';
+    saveBtn.disabled = false;
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────
 
-console.log(`[init] serverUrl=${window.electronAPI.serverUrl}`);
-fetchEvents();
-setInterval(fetchEvents, REFRESH_MS);
+async function init() {
+  console.log(`[init] serverUrl=${window.electronAPI.serverUrl}`);
+
+  // Load persisted overrides before first fetch
+  try {
+    const saved = await window.electronAPI.loadConfig();
+    if (saved.readToken)  activeReadToken = saved.readToken;
+    if (saved.refreshMs)  activeRefreshMs = saved.refreshMs;
+    console.log(`[init] loaded user-config: token=${saved.readToken ? 'set' : 'default'} refreshMs=${saved.refreshMs || 'default'}`);
+  } catch (err) {
+    console.warn('[init] could not load user-config:', err.message);
+  }
+
+  fetchEvents();
+  startRefreshTimer();
+}
 
 // Refresh triggered by main process (on tray click show)
 window.electronAPI.onRefresh(() => fetchEvents());
+
+init();
