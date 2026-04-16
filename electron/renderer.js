@@ -252,6 +252,7 @@ saveBtn.addEventListener('click', async () => {
       startRefreshTimer();
     }
 
+    saveBtn.disabled = false;
     hideSettings();
     fetchEvents();
   } catch (err) {
