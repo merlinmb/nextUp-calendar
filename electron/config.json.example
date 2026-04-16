@@ -1,1 +1,1 @@
-{"SERVER_URL":"https://calendar.mcmdhome.com","READ_TOKEN":"blahblahblah"}
+{"SERVER_URL":"http://homebridge.local:3050","READ_TOKEN":"your-api-read-token-here"}
