@@ -110,6 +110,7 @@ const DEFAULTS = {
   theme: 'dark',
   weekStart: 'monday',
   showWeekends: true,
+  appUrl: '',   // empty → falls back to APP_URL env var at runtime
   google: { clientId: '', clientSecret: '' },
   microsoft: { clientId: '', tenantId: 'common', clientSecret: '' },
 };

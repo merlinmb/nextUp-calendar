@@ -22,7 +22,8 @@ router.get('/', (req, res) => {
       tenantId: s.microsoft?.tenantId || 'common',
       hasClientSecret: !!(s.microsoft?.clientSecret),
     },
-    appUrl: process.env.APP_URL || 'http://homebridge.local:3050',
+    // Effective URL: saved setting takes priority over env var
+    appUrl: s.appUrl || process.env.APP_URL || 'http://homebridge.local:3050',
   });
 });
 
@@ -37,6 +38,7 @@ router.post('/', (req, res) => {
     theme: body.theme ?? current.theme,
     weekStart: body.weekStart ?? current.weekStart,
     showWeekends: body.showWeekends ?? current.showWeekends,
+    appUrl: body.appUrl !== undefined ? body.appUrl.trim() : current.appUrl,
     google: { ...current.google },
     microsoft: { ...current.microsoft },
   };
