@@ -59,10 +59,20 @@ const SettingsPanel = (() => {
     setSegment('setting-theme', s.theme || 'dark');
     setSegment('setting-week-start', s.weekStart || 'monday');
 
-    // OAuth URIs
+    // Server URL
+    setVal('app-url', s.appUrl || '');
+
+    // OAuth URIs (live-update as user types)
     const base = s.appUrl || window.location.origin;
     document.getElementById('uri-google').textContent    = `${base}/auth/google/callback`;
     document.getElementById('uri-microsoft').textContent = `${base}/auth/microsoft/callback`;
+
+    // Update redirect URI preview whenever the field changes
+    document.getElementById('app-url').oninput = (e) => {
+      const val = e.target.value.trim() || window.location.origin;
+      document.getElementById('uri-google').textContent    = `${val}/auth/google/callback`;
+      document.getElementById('uri-microsoft').textContent = `${val}/auth/microsoft/callback`;
+    };
   }
 
   function setVal(id, val) {
@@ -97,6 +107,7 @@ const SettingsPanel = (() => {
       view:      getSegment('setting-view')       || 'continuous',
       theme:     getSegment('setting-theme')       || 'dark',
       weekStart: getSegment('setting-week-start')  || 'monday',
+      appUrl:    document.getElementById('app-url').value.trim(),
       google: {
         clientId:     document.getElementById('g-client-id').value.trim(),
         clientSecret: document.getElementById('g-client-secret').value || undefined,

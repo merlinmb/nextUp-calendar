@@ -210,6 +210,24 @@
           </div>
         </section>
 
+        <!-- ── Server ────────────────────── -->
+        <section class="ssec">
+          <div class="ssec-head">
+            <span class="ssec-label">Server</span>
+          </div>
+          <div class="sfield">
+            <label class="sfield-label" for="app-url">Remote host URL</label>
+            <input class="sfield-input" id="app-url" type="url"
+              placeholder="http://homebridge.local:3050"
+              autocomplete="off" spellcheck="false" />
+            <p style="font-size:11px;color:var(--text-3);margin-top:5px;line-height:1.5">
+              Public URL this server is reachable at. Used to build OAuth
+              redirect URIs and for external clients (e.g. ESP32 display).
+              Leave blank to use the <code style="font-family:var(--font-mono)">APP_URL</code> environment variable.
+            </p>
+          </div>
+        </section>
+
         <!-- ── Redirect URIs ─────────────── -->
         <section class="ssec ssec-info">
           <div class="ssec-head">

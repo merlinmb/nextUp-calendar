@@ -22,7 +22,7 @@ function getAuthUrl(state) {
   if (!clientId) return null;
 
   const tenant = tenantId || 'common';
-  const appUrl = process.env.APP_URL || 'http://homebridge.local:3050';
+  const appUrl = settings.appUrl || process.env.APP_URL || 'http://homebridge.local:3050';
   const redirectUri = `${appUrl}/auth/microsoft/callback`;
 
   const params = new URLSearchParams({
@@ -45,7 +45,7 @@ async function exchangeCode(code) {
   if (!clientId || !clientSecret) throw new Error('Microsoft credentials not configured');
 
   const tenant = tenantId || 'common';
-  const appUrl = process.env.APP_URL || 'http://homebridge.local:3050';
+  const appUrl = settings.appUrl || process.env.APP_URL || 'http://homebridge.local:3050';
   const redirectUri = `${appUrl}/auth/microsoft/callback`;
 
   const resp = await fetch(
