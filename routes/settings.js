@@ -40,7 +40,7 @@ router.post('/', (req, res) => {
     theme: body.theme ?? current.theme,
     weekStart: body.weekStart ?? current.weekStart,
     showWeekends: body.showWeekends ?? current.showWeekends,
-    continuousDays: (Number.isInteger(body.continuousDays) && body.continuousDays >= 1)
+    continuousDays: (Number.isInteger(body.continuousDays) && body.continuousDays >= 7)
       ? body.continuousDays : current.continuousDays,
     monthMaxEvents: (Number.isInteger(body.monthMaxEvents) && body.monthMaxEvents >= 1)
       ? body.monthMaxEvents : current.monthMaxEvents,
