@@ -409,7 +409,7 @@ const CalendarRenderer = (() => {
 
   // ── Month view ────────────────────────────────────────────────
 
-  function renderMonth(container, events, currentDate, weekStart = 'monday') {
+  function renderMonth(container, events, currentDate, weekStart = 'monday', maxVisible = 3) {
     container.innerHTML = '';
 
     const wrap = document.createElement('div');
@@ -443,7 +443,6 @@ const CalendarRenderer = (() => {
     grid.className = 'month-grid';
 
     const todayDate = today();
-    const MAX_VISIBLE = 3;
 
     for (let i = 0; i < 42; i++) {
       const cellDate = addDays(cellStart, i);
@@ -467,8 +466,8 @@ const CalendarRenderer = (() => {
         return new Date(a.start) - new Date(b.start);
       });
 
-      const visible = dayEvs.slice(0, MAX_VISIBLE);
-      const overflow = dayEvs.length - MAX_VISIBLE;
+      const visible = dayEvs.slice(0, maxVisible);
+      const overflow = dayEvs.length - maxVisible;
 
       for (const ev of visible) {
         const pill = document.createElement('div');
@@ -653,7 +652,7 @@ const CalendarRenderer = (() => {
 
   // ── Public: date range calculator ────────────────────────────
 
-  function getDateRange(view, currentDate, weekStart = 'monday') {
+  function getDateRange(view, currentDate, weekStart = 'monday', settings = {}) {
     const startOffset = weekStart === 'monday' ? 1 : 0;
 
     if (view === 'day') {
@@ -676,9 +675,10 @@ const CalendarRenderer = (() => {
       return { start: s, end: e };
     }
 
-    // Continuous: ±45 days around currentDate
+    // Continuous
+    const lookahead = settings.continuousDays ?? 60;
     const s = addDays(startOfDay(currentDate), -3);
-    const e = addDays(startOfDay(currentDate), 60);
+    const e = addDays(startOfDay(currentDate), lookahead);
     return { start: s, end: e };
   }
 

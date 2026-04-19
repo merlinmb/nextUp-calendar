@@ -184,8 +184,10 @@ const App = (() => {
   // ── Settings update callback ──────────────────────────────────
 
   function applySettings(s) {
-    if (s.view)      { state.view = s.view; updateViewTabs(s.view); }
-    if (s.weekStart) { state.settings.weekStart = s.weekStart; }
+    if (s.view)             { state.view = s.view; updateViewTabs(s.view); }
+    if (s.weekStart)        { state.settings.weekStart = s.weekStart; }
+    if (s.continuousDays)   { state.settings.continuousDays = s.continuousDays; }
+    if (s.monthMaxEvents)   { state.settings.monthMaxEvents = s.monthMaxEvents; }
     fetchAndRender();
   }
 
@@ -199,7 +201,8 @@ const App = (() => {
     const range = CalendarRenderer.getDateRange(
       state.view,
       state.currentDate,
-      state.settings.weekStart
+      state.settings.weekStart,
+      state.settings
     );
 
     // Update header range label
@@ -260,7 +263,7 @@ const App = (() => {
         CalendarRenderer.renderWeek(container, state.events, state.currentDate, ws);
         break;
       case 'month':
-        CalendarRenderer.renderMonth(container, state.events, state.currentDate, ws);
+        CalendarRenderer.renderMonth(container, state.events, state.currentDate, ws, state.settings.monthMaxEvents ?? 3);
         break;
       default:
         CalendarRenderer.renderContinuous(container, state.events, state.currentDate, state.settings);
