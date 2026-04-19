@@ -12,6 +12,8 @@ router.get('/', (req, res) => {
     theme: s.theme,
     weekStart: s.weekStart,
     showWeekends: s.showWeekends,
+    continuousDays: s.continuousDays,
+    monthMaxEvents: s.monthMaxEvents,
     google: {
       clientId: s.google?.clientId || '',
       // Never expose the secret — only signal whether it is set
@@ -38,6 +40,8 @@ router.post('/', (req, res) => {
     theme: body.theme ?? current.theme,
     weekStart: body.weekStart ?? current.weekStart,
     showWeekends: body.showWeekends ?? current.showWeekends,
+    continuousDays: body.continuousDays ?? current.continuousDays,
+    monthMaxEvents: body.monthMaxEvents ?? current.monthMaxEvents,
     appUrl: body.appUrl !== undefined ? body.appUrl.trim() : current.appUrl,
     google: { ...current.google },
     microsoft: { ...current.microsoft },
