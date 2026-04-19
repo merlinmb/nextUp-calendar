@@ -2,11 +2,15 @@
 
 const DEFAULT_REFRESH_MS = 15 * 60 * 1000; // 15 minutes
 const DEFAULT_SERVER_URL = normalizeServerUrl(window.electronAPI.serverUrl);
+const DEFAULT_DAYS       = 2;
+const DEFAULT_MAX_EVENTS = 0; // 0 = unlimited
 
 // Runtime values — may be overridden by user-config.json
 let activeServerUrl = DEFAULT_SERVER_URL;
 let activeReadToken = window.electronAPI.readToken;
 let activeRefreshMs = DEFAULT_REFRESH_MS;
+let activeDays       = DEFAULT_DAYS;
+let activeMaxEvents  = DEFAULT_MAX_EVENTS;
 let refreshTimer    = null;
 
 const bodyEl       = document.getElementById('widget-body');
@@ -16,6 +20,8 @@ const serverInput  = document.getElementById('cfg-server');
 const tokenInput   = document.getElementById('cfg-token');
 const revealBtn    = document.getElementById('cfg-token-reveal');
 const refreshInput = document.getElementById('cfg-refresh');
+const daysInput      = document.getElementById('cfg-days');
+const maxEventsInput = document.getElementById('cfg-max-events');
 const cancelBtn    = document.getElementById('cfg-cancel');
 const saveBtn      = document.getElementById('cfg-save');
 const statusEl     = document.getElementById('cfg-status');
@@ -81,7 +87,7 @@ function normalizeServerUrl(value, baseServerUrl = window.electronAPI.serverUrl)
 
 // ── Render ────────────────────────────────────────────────────
 
-function renderDay(dateStr, events, isToday) {
+function renderDay(dateStr, events, isToday, label, maxEvents) {
   const section = document.createElement('div');
   section.className = 'day-section';
 
@@ -89,20 +95,26 @@ function renderDay(dateStr, events, isToday) {
   const header = document.createElement('div');
   header.className = 'day-section-header';
 
-  const label = document.createElement('span');
-  label.className = 'day-label' + (isToday ? ' is-today' : '');
-  label.textContent = isToday ? 'TODAY' : 'TOMORROW';
+  const labelEl = document.createElement('span');
+  labelEl.className = 'day-label' + (isToday ? ' is-today' : '');
+  labelEl.textContent = label;
 
   const dateEl = document.createElement('span');
   dateEl.className = 'day-date';
   dateEl.textContent = formatHeaderDate(dateStr);
 
-  header.appendChild(label);
+  header.appendChild(labelEl);
   header.appendChild(dateEl);
   section.appendChild(header);
 
   const allDay = events.filter(ev => ev.isAllDay);
-  const timed  = events.filter(ev => !ev.isAllDay);
+  let   timed  = events.filter(ev => !ev.isAllDay);
+
+  let overflowCount = 0;
+  if (maxEvents > 0 && timed.length > maxEvents) {
+    overflowCount = timed.length - maxEvents;
+    timed = timed.slice(0, maxEvents);
+  }
 
   // All-day chips
   if (allDay.length > 0) {
@@ -151,8 +163,15 @@ function renderDay(dateStr, events, isToday) {
     section.appendChild(row);
   }
 
+  if (overflowCount > 0) {
+    const more = document.createElement('div');
+    more.className = 'day-overflow';
+    more.textContent = `+${overflowCount} more`;
+    section.appendChild(more);
+  }
+
   // Empty state
-  if (allDay.length === 0 && timed.length === 0) {
+  if (allDay.length === 0 && timed.length === 0 && overflowCount === 0) {
     const empty = document.createElement('div');
     empty.className = 'day-empty';
     empty.textContent = 'No events';
@@ -163,15 +182,15 @@ function renderDay(dateStr, events, isToday) {
 }
 
 function renderEvents(events) {
-  const todayStr    = localDateStr(new Date());
-  const tomorrowStr = localDateStr(new Date(Date.now() + 24 * 60 * 60 * 1000));
-
-  const todayEvs    = events.filter(ev => eventDateStr(ev) === todayStr);
-  const tomorrowEvs = events.filter(ev => eventDateStr(ev) === tomorrowStr);
-
   bodyEl.innerHTML = '';
-  bodyEl.appendChild(renderDay(todayStr,    todayEvs,    true));
-  bodyEl.appendChild(renderDay(tomorrowStr, tomorrowEvs, false));
+
+  for (let i = 0; i < activeDays; i++) {
+    const d = new Date(Date.now() + i * 24 * 60 * 60 * 1000);
+    const dateStr = localDateStr(d);
+    const label   = i === 0 ? 'TODAY' : i === 1 ? 'TOMORROW' : formatHeaderDate(dateStr);
+    const dayEvs  = events.filter(ev => eventDateStr(ev) === dateStr);
+    bodyEl.appendChild(renderDay(dateStr, dayEvs, i === 0, label, activeMaxEvents));
+  }
 }
 
 // ── Fetch ─────────────────────────────────────────────────────
@@ -181,7 +200,7 @@ let lastSyncedAt = null;
 async function fetchEvents() {
   const serverUrl = activeServerUrl;
   const readToken = activeReadToken;
-  const url = `${serverUrl}/jsonCalendar?timeframe=2d`;
+  const url = `${serverUrl}/jsonCalendar?timeframe=${activeDays}d`;
   console.log(`[fetch] GET ${url}`);
   try {
     const resp = await fetch(url, {
@@ -230,6 +249,10 @@ function showSettings() {
   tokenInput.type        = 'password';
   revealBtn.textContent  = '\u{1F441}';
   refreshInput.value = Math.round(activeRefreshMs / 60000);
+  daysInput.value      = activeDays !== DEFAULT_DAYS ? activeDays : '';
+  daysInput.placeholder = String(DEFAULT_DAYS);
+  maxEventsInput.value  = activeMaxEvents !== DEFAULT_MAX_EVENTS ? activeMaxEvents : '';
+  maxEventsInput.placeholder = String(DEFAULT_MAX_EVENTS);
   statusEl.textContent = '';
   statusEl.className   = 'settings-status';
 
@@ -284,11 +307,30 @@ saveBtn.addEventListener('click', async () => {
     return;
   }
 
+  const daysVal      = daysInput.value !== '' ? parseInt(daysInput.value, 10) : NaN;
+  const maxEventsVal = maxEventsInput.value !== '' ? parseInt(maxEventsInput.value, 10) : NaN;
+
+  if (daysInput.value !== '' && (isNaN(daysVal) || daysVal < 1 || daysVal > 30)) {
+    statusEl.textContent = 'Days must be 1–30.';
+    statusEl.className   = 'settings-status error';
+    saveBtn.disabled = false;
+    return;
+  }
+
+  if (maxEventsInput.value !== '' && (isNaN(maxEventsVal) || maxEventsVal < 0 || maxEventsVal > 20)) {
+    statusEl.textContent = 'Max events must be 0–20 (0 = all).';
+    statusEl.className   = 'settings-status error';
+    saveBtn.disabled = false;
+    return;
+  }
+
   const overrides = {};
   if (normalizedServerUrl) overrides.serverUrl = normalizedServerUrl;
   // Only save non-empty token overrides
   if (tokenVal) overrides.readToken = tokenVal;
   if (!isNaN(refreshVal) && refreshVal >= 1) overrides.refreshMs = refreshVal * 60 * 1000;
+  if (!isNaN(daysVal)      && daysVal >= 1)      overrides.days      = daysVal;
+  if (!isNaN(maxEventsVal) && maxEventsVal >= 0)  overrides.maxEvents = maxEventsVal;
 
   try {
     const result = await window.electronAPI.saveConfig(overrides);
@@ -301,6 +343,8 @@ saveBtn.addEventListener('click', async () => {
       activeRefreshMs = overrides.refreshMs;
       startRefreshTimer();
     }
+    if (typeof overrides.days === 'number')      { activeDays = overrides.days; }
+    if (typeof overrides.maxEvents === 'number') { activeMaxEvents = overrides.maxEvents; }
 
     saveBtn.disabled = false;
     hideSettings();
@@ -321,9 +365,11 @@ async function init() {
   // Load persisted overrides before first fetch
   try {
     const saved = await window.electronAPI.loadConfig();
-    if (saved.serverUrl)  activeServerUrl = normalizeServerUrl(saved.serverUrl, DEFAULT_SERVER_URL);
-    if (saved.readToken)  activeReadToken = saved.readToken;
-    if (saved.refreshMs)  activeRefreshMs = saved.refreshMs;
+    if (saved.serverUrl)   activeServerUrl  = normalizeServerUrl(saved.serverUrl, DEFAULT_SERVER_URL);
+    if (saved.readToken)   activeReadToken  = saved.readToken;
+    if (saved.refreshMs)   activeRefreshMs  = saved.refreshMs;
+    if (saved.days)        activeDays       = saved.days;
+    if (saved.maxEvents !== undefined) activeMaxEvents = saved.maxEvents;
     console.log(`[init] loaded user-config: serverUrl=${saved.serverUrl || 'default'} token=${saved.readToken ? 'set' : 'default'} refreshMs=${saved.refreshMs || 'default'}`);
   } catch (err) {
     console.warn('[init] could not load user-config:', err.message);

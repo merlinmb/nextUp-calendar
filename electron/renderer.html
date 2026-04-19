@@ -64,6 +64,18 @@
              min="1" max="60" step="1" placeholder="15">
     </div>
 
+    <div class="settings-field">
+      <label class="settings-label" for="cfg-days">Days to show</label>
+      <input class="settings-input settings-input--short" id="cfg-days" type="number"
+             min="1" max="30" step="1" placeholder="2">
+    </div>
+
+    <div class="settings-field">
+      <label class="settings-label" for="cfg-max-events">Max events per day (0 = all)</label>
+      <input class="settings-input settings-input--short" id="cfg-max-events" type="number"
+             min="0" max="20" step="1" placeholder="0">
+    </div>
+
     <div class="settings-actions">
       <button class="settings-btn settings-btn--cancel" id="cfg-cancel">Cancel</button>
       <button class="settings-btn settings-btn--save"   id="cfg-save">Save</button>
