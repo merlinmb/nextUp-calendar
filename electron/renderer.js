@@ -184,8 +184,11 @@ function renderDay(dateStr, events, isToday, label, maxEvents) {
 function renderEvents(events) {
   bodyEl.innerHTML = '';
 
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
   for (let i = 0; i < activeDays; i++) {
-    const d = new Date(Date.now() + i * 24 * 60 * 60 * 1000);
+    const d = new Date(todayMidnight.getTime() + i * 24 * 60 * 60 * 1000);
     const dateStr = localDateStr(d);
     const label   = i === 0 ? 'TODAY' : i === 1 ? 'TOMORROW' : formatHeaderDate(dateStr);
     const dayEvs  = events.filter(ev => eventDateStr(ev) === dateStr);
