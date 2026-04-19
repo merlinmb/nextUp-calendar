@@ -62,6 +62,12 @@ const SettingsPanel = (() => {
     // Server URL
     setVal('app-url', s.appUrl || '');
 
+    // Number inputs
+    const cdEl = document.getElementById('setting-continuous-days');
+    if (cdEl) cdEl.value = s.continuousDays ?? 60;
+    const mmEl = document.getElementById('setting-month-max-events');
+    if (mmEl) mmEl.value = s.monthMaxEvents ?? 3;
+
     // OAuth URIs (live-update as user types)
     const base = s.appUrl || window.location.origin;
     document.getElementById('uri-google').textContent    = `${base}/auth/google/callback`;
@@ -104,10 +110,12 @@ const SettingsPanel = (() => {
 
   async function save() {
     const body = {
-      view:      getSegment('setting-view')       || 'continuous',
-      theme:     getSegment('setting-theme')       || 'dark',
-      weekStart: getSegment('setting-week-start')  || 'monday',
-      appUrl:    document.getElementById('app-url').value.trim(),
+      view:             getSegment('setting-view')       || 'continuous',
+      theme:            getSegment('setting-theme')       || 'dark',
+      weekStart:        getSegment('setting-week-start')  || 'monday',
+      continuousDays:   parseInt(document.getElementById('setting-continuous-days').value, 10) || 60,
+      monthMaxEvents:   parseInt(document.getElementById('setting-month-max-events').value, 10) || 3,
+      appUrl:           document.getElementById('app-url').value.trim(),
       google: {
         clientId:     document.getElementById('g-client-id').value.trim(),
         clientSecret: document.getElementById('g-client-secret').value || undefined,
