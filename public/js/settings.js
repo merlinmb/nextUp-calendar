@@ -109,13 +109,14 @@ const SettingsPanel = (() => {
   // ── Save ──────────────────────────────────────────────────────
 
   async function save() {
+    const cdRaw = parseInt(document.getElementById('setting-continuous-days').value, 10);
+    const mmRaw = parseInt(document.getElementById('setting-month-max-events').value, 10);
+
     const body = {
-      view:             getSegment('setting-view')       || 'continuous',
-      theme:            getSegment('setting-theme')       || 'dark',
-      weekStart:        getSegment('setting-week-start')  || 'monday',
-      continuousDays:   parseInt(document.getElementById('setting-continuous-days').value, 10) || 60,
-      monthMaxEvents:   parseInt(document.getElementById('setting-month-max-events').value, 10) || 3,
-      appUrl:           document.getElementById('app-url').value.trim(),
+      view:      getSegment('setting-view')       || 'continuous',
+      theme:     getSegment('setting-theme')       || 'dark',
+      weekStart: getSegment('setting-week-start')  || 'monday',
+      appUrl:    document.getElementById('app-url').value.trim(),
       google: {
         clientId:     document.getElementById('g-client-id').value.trim(),
         clientSecret: document.getElementById('g-client-secret').value || undefined,
@@ -126,6 +127,9 @@ const SettingsPanel = (() => {
         clientSecret: document.getElementById('ms-client-secret').value || undefined,
       },
     };
+
+    if (!Number.isNaN(cdRaw)) body.continuousDays = cdRaw;
+    if (!Number.isNaN(mmRaw)) body.monthMaxEvents  = mmRaw;
 
     try {
       const resp = await fetch('/api/settings', {
