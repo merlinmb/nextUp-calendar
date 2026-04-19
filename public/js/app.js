@@ -186,8 +186,8 @@ const App = (() => {
   function applySettings(s) {
     if (s.view)             { state.view = s.view; updateViewTabs(s.view); }
     if (s.weekStart)        { state.settings.weekStart = s.weekStart; }
-    if (s.continuousDays)   { state.settings.continuousDays = s.continuousDays; }
-    if (s.monthMaxEvents)   { state.settings.monthMaxEvents = s.monthMaxEvents; }
+    if (s.continuousDays != null)  { state.settings.continuousDays = s.continuousDays; }
+    if (s.monthMaxEvents != null)  { state.settings.monthMaxEvents = s.monthMaxEvents; }
     fetchAndRender();
   }
 
