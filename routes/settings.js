@@ -40,8 +40,10 @@ router.post('/', (req, res) => {
     theme: body.theme ?? current.theme,
     weekStart: body.weekStart ?? current.weekStart,
     showWeekends: body.showWeekends ?? current.showWeekends,
-    continuousDays: body.continuousDays ?? current.continuousDays,
-    monthMaxEvents: body.monthMaxEvents ?? current.monthMaxEvents,
+    continuousDays: (Number.isInteger(body.continuousDays) && body.continuousDays >= 1)
+      ? body.continuousDays : current.continuousDays,
+    monthMaxEvents: (Number.isInteger(body.monthMaxEvents) && body.monthMaxEvents >= 1)
+      ? body.monthMaxEvents : current.monthMaxEvents,
     appUrl: body.appUrl !== undefined ? body.appUrl.trim() : current.appUrl,
     google: { ...current.google },
     microsoft: { ...current.microsoft },
