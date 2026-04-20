@@ -1,17 +1,20 @@
 'use strict';
 
-const DEFAULT_REFRESH_MS = 15 * 60 * 1000; // 15 minutes
-const DEFAULT_SERVER_URL = normalizeServerUrl(window.electronAPI.serverUrl);
-const DEFAULT_DAYS       = 2;
-const DEFAULT_MAX_EVENTS = 0; // 0 = unlimited
+const DEFAULT_REFRESH_MS     = 15 * 60 * 1000; // 15 minutes
+const DEFAULT_SERVER_URL     = normalizeServerUrl(window.electronAPI.serverUrl);
+const DEFAULT_DAYS           = 2;
+const DEFAULT_MAX_EVENTS     = 0; // 0 = unlimited
+const DEFAULT_INACTIVITY_MS  = 30 * 1000; // 30 seconds
 
 // Runtime values — may be overridden by user-config.json
-let activeServerUrl = DEFAULT_SERVER_URL;
-let activeReadToken = window.electronAPI.readToken;
-let activeRefreshMs = DEFAULT_REFRESH_MS;
-let activeDays       = DEFAULT_DAYS;
-let activeMaxEvents  = DEFAULT_MAX_EVENTS;
-let refreshTimer    = null;
+let activeServerUrl    = DEFAULT_SERVER_URL;
+let activeReadToken    = window.electronAPI.readToken;
+let activeRefreshMs    = DEFAULT_REFRESH_MS;
+let activeDays         = DEFAULT_DAYS;
+let activeMaxEvents    = DEFAULT_MAX_EVENTS;
+let activeInactivityMs = DEFAULT_INACTIVITY_MS;
+let refreshTimer       = null;
+let inactivityTimer    = null;
 
 const bodyEl       = document.getElementById('widget-body');
 const settingsEl   = document.getElementById('settings-panel');
@@ -56,6 +59,29 @@ function formatHeaderDate(dateStr) {
   const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function formatTimeRange(startIso, endIso) {
+  return `${formatTime(startIso)} – ${formatTime(endIso)}`;
+}
+
+function collapseAll() {
+  document.querySelectorAll('.event-row.is-expanded').forEach(row => {
+    row.classList.remove('is-expanded');
+  });
+}
+
+function stripHtml(html) {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function resetInactivityTimer() {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  if (!settingsEl.hidden) return;
+  inactivityTimer = setTimeout(() => {
+    collapseAll();
+    bodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+  }, activeInactivityMs);
 }
 
 function normalizeServerUrl(value, baseServerUrl = window.electronAPI.serverUrl) {
@@ -156,6 +182,41 @@ function renderDay(dateStr, events, isToday, label, maxEvents) {
       meta.textContent = ev.calendarName;
       bodyDiv.appendChild(meta);
     }
+
+    // Detail panel (hidden until expanded)
+    const detail = document.createElement('div');
+    detail.className = 'event-detail';
+
+    if (ev.end) {
+      const timeRange = document.createElement('div');
+      timeRange.className = 'event-detail-time';
+      timeRange.textContent = formatTimeRange(ev.start, ev.end);
+      detail.appendChild(timeRange);
+    }
+
+    if (ev.location) {
+      const loc = document.createElement('div');
+      loc.className = 'event-detail-location';
+      loc.textContent = ev.location;
+      detail.appendChild(loc);
+    }
+
+    const descText = stripHtml(ev.description);
+    if (descText) {
+      const desc = document.createElement('div');
+      desc.className = 'event-detail-desc';
+      desc.textContent = descText;
+      detail.appendChild(desc);
+    }
+
+    bodyDiv.appendChild(detail);
+
+    row.addEventListener('click', () => {
+      const isOpen = row.classList.contains('is-expanded');
+      collapseAll();
+      if (!isOpen) row.classList.add('is-expanded');
+      resetInactivityTimer();
+    });
 
     row.appendChild(timeEl);
     row.appendChild(bar);
@@ -380,9 +441,16 @@ async function init() {
 
   fetchEvents();
   startRefreshTimer();
+  resetInactivityTimer();
 }
 
 // Refresh triggered by main process (on tray click show)
 window.electronAPI.onRefresh(() => fetchEvents());
+
+// Inactivity timer — reset on any user interaction in the events body
+bodyEl.addEventListener('mousemove', resetInactivityTimer);
+bodyEl.addEventListener('click', resetInactivityTimer);
+bodyEl.addEventListener('scroll', resetInactivityTimer);
+window.addEventListener('focus', resetInactivityTimer);
 
 init();
