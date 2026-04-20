@@ -161,10 +161,11 @@ app.get('/jsonCalendar', requireReadToken, (req, res) => {
   });
 });
 
-// ── Static assets (CSS/JS) — public, needed by the login page ────────────
-// Only expose the css/ and js/ subdirectories without auth, not index.html
+// ── Static assets (CSS/JS/favicon) — public, needed by login page ────────
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
+app.get('/favicon.svg', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
+app.get('/favicon.ico', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 
 // ── UI-authenticated routes ───────────────────────────────────
 // All remaining routes (including serving index.html) require the UI session

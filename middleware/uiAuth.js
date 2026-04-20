@@ -8,8 +8,12 @@ function requireUiAuth(req, res, next) {
   if (req.session && req.session.uiAuthed) {
     return next();
   }
-  // Store the original URL so we can redirect back after login
-  req.session.returnTo = req.originalUrl;
+  // Only save returnTo for real page navigations, not asset fetches
+  const url = req.originalUrl.split('?')[0];
+  const isAsset = /\.(ico|png|svg|webp|jpg|jpeg|gif|css|js|woff2?|ttf)$/i.test(url);
+  if (!isAsset) {
+    req.session.returnTo = req.originalUrl;
+  }
   res.redirect('/login');
 }
 
