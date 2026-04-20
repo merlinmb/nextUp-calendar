@@ -23,8 +23,9 @@ const serverInput  = document.getElementById('cfg-server');
 const tokenInput   = document.getElementById('cfg-token');
 const revealBtn    = document.getElementById('cfg-token-reveal');
 const refreshInput = document.getElementById('cfg-refresh');
-const daysInput      = document.getElementById('cfg-days');
-const maxEventsInput = document.getElementById('cfg-max-events');
+const daysInput        = document.getElementById('cfg-days');
+const maxEventsInput   = document.getElementById('cfg-max-events');
+const inactivityInput  = document.getElementById('cfg-inactivity');
 const cancelBtn    = document.getElementById('cfg-cancel');
 const saveBtn      = document.getElementById('cfg-save');
 const statusEl     = document.getElementById('cfg-status');
@@ -317,16 +318,22 @@ function showSettings() {
   daysInput.placeholder = String(DEFAULT_DAYS);
   maxEventsInput.value  = activeMaxEvents !== DEFAULT_MAX_EVENTS ? activeMaxEvents : '';
   maxEventsInput.placeholder = String(DEFAULT_MAX_EVENTS);
+  inactivityInput.value = activeInactivityMs !== DEFAULT_INACTIVITY_MS
+    ? Math.round(activeInactivityMs / 1000)
+    : '';
+  inactivityInput.placeholder = '30';
   statusEl.textContent = '';
   statusEl.className   = 'settings-status';
 
   bodyEl.hidden     = true;
   settingsEl.hidden = false;
+  if (inactivityTimer) clearTimeout(inactivityTimer);
 }
 
 function hideSettings() {
   settingsEl.hidden = true;
   bodyEl.hidden     = false;
+  resetInactivityTimer();
 }
 
 function startRefreshTimer() {
@@ -388,13 +395,23 @@ saveBtn.addEventListener('click', async () => {
     return;
   }
 
+  const inactivityVal = inactivityInput.value !== '' ? parseInt(inactivityInput.value, 10) : NaN;
+
+  if (inactivityInput.value !== '' && (isNaN(inactivityVal) || inactivityVal < 10 || inactivityVal > 300)) {
+    statusEl.textContent = 'Auto-collapse must be 10–300 seconds.';
+    statusEl.className   = 'settings-status error';
+    saveBtn.disabled = false;
+    return;
+  }
+
   const overrides = {};
   if (normalizedServerUrl) overrides.serverUrl = normalizedServerUrl;
   // Only save non-empty token overrides
   if (tokenVal) overrides.readToken = tokenVal;
   if (!isNaN(refreshVal) && refreshVal >= 1) overrides.refreshMs = refreshVal * 60 * 1000;
-  if (!isNaN(daysVal)      && daysVal >= 1)      overrides.days      = daysVal;
-  if (!isNaN(maxEventsVal) && maxEventsVal >= 0)  overrides.maxEvents = maxEventsVal;
+  if (!isNaN(daysVal)       && daysVal >= 1)       overrides.days          = daysVal;
+  if (!isNaN(maxEventsVal)  && maxEventsVal >= 0)   overrides.maxEvents     = maxEventsVal;
+  if (!isNaN(inactivityVal) && inactivityVal >= 10) overrides.inactivitySecs = inactivityVal;
 
   try {
     const result = await window.electronAPI.saveConfig(overrides);
@@ -407,8 +424,12 @@ saveBtn.addEventListener('click', async () => {
       activeRefreshMs = overrides.refreshMs;
       startRefreshTimer();
     }
-    if (typeof overrides.days === 'number')      { activeDays = overrides.days; }
-    if (typeof overrides.maxEvents === 'number') { activeMaxEvents = overrides.maxEvents; }
+    if (typeof overrides.days === 'number')          { activeDays = overrides.days; }
+    if (typeof overrides.maxEvents === 'number')     { activeMaxEvents = overrides.maxEvents; }
+    if (typeof overrides.inactivitySecs === 'number') {
+      activeInactivityMs = overrides.inactivitySecs * 1000;
+      resetInactivityTimer();
+    }
 
     saveBtn.disabled = false;
     hideSettings();
@@ -434,6 +455,7 @@ async function init() {
     if (saved.refreshMs)   activeRefreshMs  = saved.refreshMs;
     if (saved.days)        activeDays       = saved.days;
     if (saved.maxEvents !== undefined) activeMaxEvents = saved.maxEvents;
+    if (saved.inactivitySecs)          activeInactivityMs = saved.inactivitySecs * 1000;
     console.log(`[init] loaded user-config: serverUrl=${saved.serverUrl || 'default'} token=${saved.readToken ? 'set' : 'default'} refreshMs=${saved.refreshMs || 'default'}`);
   } catch (err) {
     console.warn('[init] could not load user-config:', err.message);
