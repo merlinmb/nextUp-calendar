@@ -131,7 +131,6 @@ function createWindow() {
     resizable:   false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    transparent: true,
     show:        false,
     webPreferences: {
       preload:             path.join(__dirname, 'preload.js'),
@@ -158,13 +157,8 @@ function createWindow() {
     log(`did-fail-load  url=${url}  code=${errorCode}  desc=${errorDesc}`);
   });
 
-  win.webContents.on('did-finish-load', () => {
-    log('did-finish-load -- renderer HTML loaded OK');
-  });
-
-  // Show the window once the page has loaded
-  win.once('ready-to-show', () => {
-    log('ready-to-show -- showing window');
+  win.webContents.once('did-finish-load', () => {
+    log('did-finish-load -- showing window');
     win.show();
   });
 
