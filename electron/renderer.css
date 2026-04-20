@@ -92,7 +92,7 @@ html, body {
   padding: var(--sp-1) var(--sp-4);
   gap: var(--sp-2);
   min-height: 32px;
-  cursor: default;
+  cursor: pointer;
   -webkit-app-region: no-drag;
 }
 
@@ -331,3 +331,42 @@ html, body {
 
 .settings-status.error { color: var(--accent-red); }
 .settings-status.success { color: var(--accent-teal); }
+
+/* ── Event expand/collapse ──────────────────────────────────── */
+.event-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--t-mid);
+  margin-top: 0;
+}
+
+.event-row.is-expanded .event-detail {
+  max-height: 120px;
+  margin-top: var(--sp-1);
+}
+
+.event-detail-time {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+
+.event-detail-location {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.event-detail-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: var(--lh-normal);
+}
