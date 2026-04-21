@@ -9,11 +9,12 @@ const helmet  = require('helmet');
 const path    = require('path');
 const fs      = require('fs');
 
-const authRoutes     = require('./routes/auth');
-const calendarRoutes = require('./routes/calendar');
-const settingsRoutes = require('./routes/settings');
-const loginRoutes    = require('./routes/login');
-const eventsRoutes   = require('./routes/events');
+const authRoutes      = require('./routes/auth');
+const calendarRoutes  = require('./routes/calendar');
+const calendarsRoutes = require('./routes/calendars');
+const settingsRoutes  = require('./routes/settings');
+const loginRoutes     = require('./routes/login');
+const eventsRoutes    = require('./routes/events');
 const cache          = require('./services/cache');
 const { requireReadToken, requireWriteToken } = require('./middleware/auth');
 const { requireUiAuth } = require('./middleware/uiAuth');
@@ -171,9 +172,10 @@ app.get('/favicon.ico', (_req, res) => res.sendFile(path.join(__dirname, 'public
 // All remaining routes (including serving index.html) require the UI session
 app.use(requireUiAuth);
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/auth',         authRoutes);
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/settings', settingsRoutes);
+app.use('/auth',          authRoutes);
+app.use('/api/calendar',   calendarRoutes);
+app.use('/api/calendars',  calendarsRoutes);
+app.use('/api/settings',   settingsRoutes);
 
 // ── Start background cache sync ───────────────────────────────
 cache.startScheduler();
