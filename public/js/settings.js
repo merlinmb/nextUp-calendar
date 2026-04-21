@@ -17,12 +17,14 @@ const SettingsPanel = (() => {
 
   // ── Open / Close ──────────────────────────────────────────────
 
-  function open() {
-    updateAuthStatus().then(() => {
-      load().then(() => {
-        panel().classList.remove('hidden');
-      });
-    });
+  async function open() {
+    try {
+      await updateAuthStatus();
+      await load();
+      panel().classList.remove('hidden');
+    } catch (e) {
+      console.error('[settings] open error:', e);
+    }
   }
 
   function close() {
@@ -52,7 +54,8 @@ const SettingsPanel = (() => {
 
     try {
       const resp = await fetch(`/api/calendars/${provider}`);
-      const calendars = resp.ok ? await resp.json() : [];
+      if (!resp.ok) throw new Error(`calendars API ${resp.status}`);
+      const calendars = await resp.json();
 
       if (!Array.isArray(calendars) || calendars.length === 0) {
         container.innerHTML = '<span class="cal-checklist-error">No calendars found</span>';
@@ -96,11 +99,13 @@ const SettingsPanel = (() => {
     const key = provider === 'google' ? 'googleDisabledCalendars' : 'microsoftDisabledCalendars';
 
     try {
-      await fetch('/api/settings', {
+      const resp = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [key]: disabled }),
       });
+      if (!resp.ok) throw new Error('Server rejected calendar selection');
+      current[key] = disabled;
     } catch {
       App.toast('Failed to save calendar selection', 'error');
     }
