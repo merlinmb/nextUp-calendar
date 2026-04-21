@@ -18,8 +18,10 @@ const SettingsPanel = (() => {
   // ── Open / Close ──────────────────────────────────────────────
 
   function open() {
-    load().then(() => {
-      panel().classList.remove('hidden');
+    updateAuthStatus().then(() => {
+      load().then(() => {
+        panel().classList.remove('hidden');
+      });
     });
   }
 
@@ -37,6 +39,70 @@ const SettingsPanel = (() => {
       render(current);
     } catch (e) {
       console.error('[settings] load error:', e);
+    }
+  }
+
+  // ── Calendar checklists ───────────────────────────────────────
+
+  async function loadCalendarList(provider, containerId, disabledIds) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = '<span class="cal-checklist-loading">Loading…</span>';
+
+    try {
+      const resp = await fetch(`/api/calendars/${provider}`);
+      const calendars = resp.ok ? await resp.json() : [];
+
+      if (!Array.isArray(calendars) || calendars.length === 0) {
+        container.innerHTML = '<span class="cal-checklist-error">No calendars found</span>';
+        return;
+      }
+
+      container.innerHTML = '';
+      calendars.forEach((cal) => {
+        const checked = !disabledIds.includes(cal.id);
+        const row = document.createElement('label');
+        row.className = 'cal-check-row';
+
+        const cb = document.createElement('input');
+        cb.type    = 'checkbox';
+        cb.checked = checked;
+        cb.dataset.calId = cal.id;
+        cb.addEventListener('change', () => saveCalendarSelection(provider));
+
+        const name = document.createElement('span');
+        name.className = 'cal-check-name';
+        name.textContent = cal.name;
+
+        row.appendChild(cb);
+        row.appendChild(name);
+        container.appendChild(row);
+      });
+    } catch {
+      container.innerHTML = '<span class="cal-checklist-error">Could not load calendars</span>';
+    }
+  }
+
+  async function saveCalendarSelection(provider) {
+    const containerId = provider === 'google' ? 'g-cal-items' : 'ms-cal-items';
+    const container   = document.getElementById(containerId);
+    if (!container) return;
+
+    const disabled = Array.from(container.querySelectorAll('input[type="checkbox"]'))
+      .filter((cb) => !cb.checked)
+      .map((cb) => cb.dataset.calId);
+
+    const key = provider === 'google' ? 'googleDisabledCalendars' : 'microsoftDisabledCalendars';
+
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: disabled }),
+      });
+    } catch {
+      App.toast('Failed to save calendar selection', 'error');
     }
   }
 
@@ -79,6 +145,26 @@ const SettingsPanel = (() => {
       document.getElementById('uri-google').textContent    = `${val}/auth/google/callback`;
       document.getElementById('uri-microsoft').textContent = `${val}/auth/microsoft/callback`;
     };
+
+    // Calendar checklists — show only when connected
+    const gWrap  = document.getElementById('g-cal-checklist');
+    const msWrap = document.getElementById('ms-cal-checklist');
+
+    if (gWrap) {
+      const isConn = document.getElementById('g-conn-badge')?.classList.contains('connected');
+      gWrap.style.display = isConn ? '' : 'none';
+      if (isConn) {
+        loadCalendarList('google', 'g-cal-items', s.googleDisabledCalendars || []);
+      }
+    }
+
+    if (msWrap) {
+      const isConn = document.getElementById('ms-conn-badge')?.classList.contains('connected');
+      msWrap.style.display = isConn ? '' : 'none';
+      if (isConn) {
+        loadCalendarList('microsoft', 'ms-cal-items', s.microsoftDisabledCalendars || []);
+      }
+    }
   }
 
   function setVal(id, val) {
