@@ -117,17 +117,12 @@ async function listCalendars() {
 
   const calendarApi = google.calendar({ version: 'v3', auth: client });
 
-  try {
-    const resp = await calendarApi.calendarList.list({ minAccessRole: 'reader' });
-    return (resp.data.items || []).map((cal) => ({
-      id: cal.id,
-      name: cal.summary || cal.id,
-      color: cal.backgroundColor || null,
-    }));
-  } catch (err) {
-    console.error('[google] listCalendars error:', err.message);
-    return [];
-  }
+  const resp = await calendarApi.calendarList.list({ minAccessRole: 'reader' });
+  return (resp.data.items || []).map((cal) => ({
+    id: cal.id,
+    name: cal.summary || cal.id,
+    color: cal.backgroundColor || null,
+  }));
 }
 
 function normaliseEvent(ev, calName, calColor) {

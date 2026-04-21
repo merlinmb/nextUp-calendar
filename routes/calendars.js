@@ -11,7 +11,8 @@ router.get('/google', async (req, res) => {
   try {
     const calendars = await google.listCalendars();
     res.json(calendars);
-  } catch {
+  } catch (err) {
+    console.error('[calendars/google] listCalendars error:', err.message);
     res.status(502).json({ error: 'Could not load calendars' });
   }
 });
@@ -22,7 +23,8 @@ router.get('/microsoft', async (req, res) => {
   try {
     const calendars = await microsoft.listCalendars();
     res.json(calendars);
-  } catch {
+  } catch (err) {
+    console.error('[calendars/microsoft] listCalendars error:', err.message);
     res.status(502).json({ error: 'Could not load calendars' });
   }
 });
