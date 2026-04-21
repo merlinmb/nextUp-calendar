@@ -113,6 +113,8 @@ const DEFAULTS = {
   continuousDays: 60,
   monthMaxEvents: 3,
   appUrl: '',   // empty → falls back to APP_URL env var at runtime
+  googleDisabledCalendars: [],
+  microsoftDisabledCalendars: [],
   google: { clientId: '', clientSecret: '' },
   microsoft: { clientId: '', tenantId: 'common', clientSecret: '' },
 };
