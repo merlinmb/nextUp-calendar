@@ -75,6 +75,12 @@ async function getCalendarEvents(startISO, endISO) {
     return [];
   }
 
+  // Skip calendars the user has disabled
+  const disabled = getSettings().googleDisabledCalendars || [];
+  if (disabled.length > 0) {
+    calendarList = calendarList.filter((cal) => !disabled.includes(cal.id));
+  }
+
   const results = await Promise.allSettled(
     calendarList.map((cal) =>
       calendarApi.events
@@ -99,6 +105,29 @@ async function getCalendarEvents(startISO, endISO) {
   );
 
   return events.sort((a, b) => new Date(a.start) - new Date(b.start));
+}
+
+// ── List calendars ───────────────────────────────────────────
+async function listCalendars() {
+  const tokens = getTokens();
+  if (!tokens.google?.access_token) return [];
+
+  const client = createOAuth2Client();
+  if (!client) return [];
+
+  const calendarApi = google.calendar({ version: 'v3', auth: client });
+
+  try {
+    const resp = await calendarApi.calendarList.list({ minAccessRole: 'reader' });
+    return (resp.data.items || []).map((cal) => ({
+      id: cal.id,
+      name: cal.summary || cal.id,
+      color: cal.backgroundColor || null,
+    }));
+  } catch (err) {
+    console.error('[google] listCalendars error:', err.message);
+    return [];
+  }
 }
 
 function normaliseEvent(ev, calName, calColor) {
@@ -132,4 +161,4 @@ function isConnected() {
   return !!(tokens.google?.access_token);
 }
 
-module.exports = { createOAuth2Client, getAuthUrl, exchangeCode, getCalendarEvents, isConnected };
+module.exports = { createOAuth2Client, getAuthUrl, exchangeCode, getCalendarEvents, listCalendars, isConnected };
