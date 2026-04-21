@@ -167,13 +167,14 @@ async function getCalendarEvents(startISO, endISO) {
   // Get all calendars first
   const calListData = await graphGet('/me/calendars?$top=50', token);
 
+  const allCalendars = calListData?.value || [];
   const disabled = getSettings().microsoftDisabledCalendars || [];
-  let calendars = (calListData?.value || []).filter(
-    (cal) => !disabled.includes(cal.id)
-  );
+  let calendars = disabled.length > 0
+    ? allCalendars.filter((cal) => !disabled.includes(cal.id))
+    : allCalendars;
 
-  if (calendars.length === 0) {
-    calendars.push({ id: null, name: 'Calendar' });
+  if (allCalendars.length === 0) {
+    calendars = [{ id: null, name: 'Calendar' }];
   }
 
   const results = await Promise.allSettled(
@@ -209,7 +210,11 @@ async function listCalendars() {
   if (!token) return [];
 
   const data = await graphGet('/me/calendars?$top=50', token);
-  return (data?.value || []).map((cal) => ({
+  if (!data) {
+    console.warn('[microsoft] listCalendars: Graph request failed');
+    return [];
+  }
+  return (data.value || []).map((cal) => ({
     id: cal.id,
     name: cal.name || cal.id,
   }));
