@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSettings, saveSettings } = require('../services/store');
+const cache = require('../services/cache');
 
 // GET /api/settings — returns settings, masking credential values
 router.get('/', (req, res) => {
@@ -14,6 +15,8 @@ router.get('/', (req, res) => {
     showWeekends: s.showWeekends,
     continuousDays: s.continuousDays,
     monthMaxEvents: s.monthMaxEvents,
+    googleDisabledCalendars:    s.googleDisabledCalendars    || [],
+    microsoftDisabledCalendars: s.microsoftDisabledCalendars || [],
     google: {
       clientId: s.google?.clientId || '',
       // Never expose the secret — only signal whether it is set
@@ -44,6 +47,12 @@ router.post('/', (req, res) => {
       ? body.continuousDays : current.continuousDays,
     monthMaxEvents: (Number.isInteger(body.monthMaxEvents) && body.monthMaxEvents >= 1)
       ? body.monthMaxEvents : current.monthMaxEvents,
+    googleDisabledCalendars: Array.isArray(body.googleDisabledCalendars)
+      ? body.googleDisabledCalendars
+      : (current.googleDisabledCalendars || []),
+    microsoftDisabledCalendars: Array.isArray(body.microsoftDisabledCalendars)
+      ? body.microsoftDisabledCalendars
+      : (current.microsoftDisabledCalendars || []),
     appUrl: body.appUrl !== undefined ? body.appUrl.trim() : current.appUrl,
     google: { ...current.google },
     microsoft: { ...current.microsoft },
@@ -67,6 +76,14 @@ router.post('/', (req, res) => {
   }
 
   saveSettings(updated);
+
+  // Refresh cache immediately if calendar selection changed
+  const gChanged  = JSON.stringify(updated.googleDisabledCalendars)   !== JSON.stringify(current.googleDisabledCalendars   || []);
+  const msChanged = JSON.stringify(updated.microsoftDisabledCalendars) !== JSON.stringify(current.microsoftDisabledCalendars || []);
+  if (gChanged || msChanged) {
+    cache.sync().catch(() => {});
+  }
+
   res.json({ ok: true });
 });
 
