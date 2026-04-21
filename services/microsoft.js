@@ -166,10 +166,13 @@ async function getCalendarEvents(startISO, endISO) {
 
   // Get all calendars first
   const calListData = await graphGet('/me/calendars?$top=50', token);
-  const calendars = calListData?.value || [];
+
+  const disabled = getSettings().microsoftDisabledCalendars || [];
+  let calendars = (calListData?.value || []).filter(
+    (cal) => !disabled.includes(cal.id)
+  );
 
   if (calendars.length === 0) {
-    // Fallback: just use the primary calendar
     calendars.push({ id: null, name: 'Calendar' });
   }
 
@@ -198,6 +201,18 @@ async function getCalendarEvents(startISO, endISO) {
   );
 
   return events.sort((a, b) => new Date(a.start) - new Date(b.start));
+}
+
+// ── List calendars ───────────────────────────────────────────
+async function listCalendars() {
+  const token = await getValidAccessToken();
+  if (!token) return [];
+
+  const data = await graphGet('/me/calendars?$top=50', token);
+  return (data?.value || []).map((cal) => ({
+    id: cal.id,
+    name: cal.name || cal.id,
+  }));
 }
 
 function normaliseEvent(ev, calName) {
@@ -232,4 +247,4 @@ function isConnected() {
   return !!(tokens.microsoft?.access_token);
 }
 
-module.exports = { getAuthUrl, exchangeCode, getCalendarEvents, isConnected };
+module.exports = { getAuthUrl, exchangeCode, getCalendarEvents, listCalendars, isConnected };
