@@ -1,338 +1,334 @@
 # nextUp Calendar
 
-A self-hosted, consolidated calendar app that merges your **Google Calendar** and **Microsoft Office 365** calendars into a single minimal, modern interface. Designed to run as a Docker container alongside Homebridge on your home server.
+nextUp Calendar is a self-hosted calendar dashboard that combines Google Calendar and Microsoft 365 calendars into one lightweight web UI. It also exposes a token-protected JSON feed for companion clients and supports pushing external events into the cache through a simple HTTP API.
 
 ![Dark mode continuous view](docs/preview-dark.png)
 
----
-
 ## Features
 
-- **Unified view** - Google and Microsoft events side-by-side, colour-coded by source
-- **Four views** - Continuous (default), Day, Week, Month
-- **Fuzzy search** - press any key to open an instant event search overlay (powered by Fuse.js)
-- **Dark / Light / Auto theme** - follows your OS preference or set manually
-- **Background sync** - events are pre-fetched every 15 minutes so page loads are instant
-- **JSON feed** - expose calendar data to other LAN clients via `/jsonCalendar?timeframe=7d`
-- **Secure token storage** - OAuth tokens are AES-256-GCM encrypted on disk; the app never logs out
-- **2FA compatible** - multi-factor auth is handled natively by Google / Microsoft login pages
-- **Zero build step** - vanilla JS + CSS, no bundler required
-- **Docker-first** - single container, persistent volume for credentials
+- Unified Google Calendar and Microsoft 365 calendar view
+- Four web views: Continuous, Day, Week, Month
+- Configurable continuous look-ahead window and month view event density
+- Per-calendar visibility controls for connected Google and Microsoft accounts
+- Fast keyboard-driven search overlay
+- Dark, light, and auto theme modes
+- Background event sync with cached responses for fast page loads
+- Session-protected web UI via a shared passphrase
+- Token-protected APIs for read access and external event writes
+- Electron desktop widget powered by the JSON feed
+- OpenAPI schema published at `/openapi.yaml`
+- Docker-first deployment with persistent encrypted credential storage
 
----
+## Architecture At A Glance
 
-## Quick Start (Docker on Homebridge)
+The app has three access surfaces:
+
+- Web UI: passphrase-protected session login at `/login`
+- Read API: `GET /jsonCalendar` with `Authorization: Bearer <API_READ_TOKEN>`
+- Write API: `POST /events` with `Authorization: Bearer <API_WRITE_TOKEN>`
+
+OAuth credentials and user preferences are stored in `data/settings.json`. Provider tokens are encrypted at rest in `data/tokens.json`. The encryption key and session secret are generated automatically on first run and persisted in `data/.enc_key` and `data/.session_secret`.
+
+## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose running on your Homebridge host (`homebridge.local`)
-- A Google Cloud Console project with OAuth 2.0 credentials ([setup guide](#google-calendar-setup))
-- An Azure AD app registration for Microsoft/Office 365 ([setup guide](#microsoft-calendar-setup))
+- Node.js 18+ if running directly
+- Docker and Docker Compose if running in a container
+- Google OAuth credentials if you want Google Calendar access
+- Microsoft app registration if you want Microsoft 365 calendar access
 
-### Deploy
+### 1. Configure environment
+
+Copy the example file and set the required values:
 
 ```bash
-# On your Homebridge host (or use the PowerShell script - see below)
-git clone https://github.com/merlinmb/nextUp-calendar.git
-cd nextUp-calendar
-
 cp .env.example .env
-# Edit .env if needed - the only required value is APP_URL
+```
 
+Minimum recommended settings:
+
+```bash
+PORT=3050
+APP_URL=http://homebridge.local:3050
+UI_PASSPHRASE=choose-a-strong-passphrase
+API_READ_TOKEN=choose-a-long-random-read-token
+API_WRITE_TOKEN=choose-a-long-random-write-token
+```
+
+### 2. Start with Docker
+
+```bash
 docker compose up -d
 ```
 
-Then open **http://homebridge.local:3050** in your browser, click the ⚙ Settings icon, and connect your accounts.
+Then open the app at your configured `APP_URL`, enter the UI passphrase on the login screen, and connect your calendar accounts from Settings.
 
-### Windows / PowerShell deployment
+### 3. Or run locally with Node.js
 
-A deployment script is included for deploying from a Windows machine over SSH:
-
-```powershell
-.\deploy.ps1
+```bash
+npm install
+npm start
 ```
-
-See [Deployment Script](#deployment-script) for configuration options.
-
----
 
 ## Configuration
 
-All runtime configuration lives in two places:
+### Environment variables
 
-| Location | Purpose |
+The server reads configuration from `.env`.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `PORT` | No | HTTP port. Defaults to `3050`. |
+| `APP_URL` | Yes | Public base URL used to build OAuth callback URIs. |
+| `NODE_ENV` | No | Usually `production` or `development`. |
+| `SESSION_SECRET` | No | Overrides the generated session secret. |
+| `HTTPS` | No | Set to `true` only when serving behind TLS. |
+| `UI_PASSPHRASE` | Yes | Shared passphrase required to access the web UI. |
+| `API_READ_TOKEN` | Yes | Bearer token for `GET /jsonCalendar`. |
+| `API_WRITE_TOKEN` | Yes | Bearer token for `POST /events`. |
+
+### Persistent data
+
+Mount `./data` as a persistent volume when running in Docker.
+
+| File | Purpose |
 |---|---|
-| `.env` | Server-level config (port, app URL, optional session secret override) |
-| Settings UI ⚙ | OAuth credentials, view preferences, theme - stored encrypted in `./data/settings.json` |
+| `data/.enc_key` | Generated encryption seed used for at-rest token encryption |
+| `data/.session_secret` | Generated Express session secret |
+| `data/settings.json` | Saved UI settings and provider credentials |
+| `data/tokens.json` | Encrypted OAuth tokens |
 
-### `.env` reference
+## Web UI
 
-```bash
-# Port the app listens on
-PORT=3050
+The browser UI is protected by `UI_PASSPHRASE`. After login, the Settings panel lets you manage:
 
-# Public URL - used to build OAuth callback URIs shown in Settings
-APP_URL=http://homebridge.local:3050
-
-NODE_ENV=production
-
-# Optional: override the auto-generated session secret
-# SESSION_SECRET=a-long-random-string
-```
-
----
+- Default calendar view
+- Theme mode
+- Week start day
+- Continuous view look-ahead window
+- Month view max visible events per day
+- Google and Microsoft OAuth credentials
+- Per-calendar visibility toggles for each connected provider
+- Effective app URL used to display OAuth callback URIs
 
 ## Google Calendar Setup
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials**
-2. Create an **OAuth 2.0 Client ID** (Application type: **Web application**)
-3. Under **Authorised redirect URIs** add:
-   ```
-   http://homebridge.local:3050/auth/google/callback
-   ```
-4. Copy the **Client ID** and **Client Secret**
-5. Enable the **Google Calendar API** under **APIs & Services** → **Enabled APIs**
-6. In the nextUp Settings panel, paste the credentials and click **Connect Google**
+1. Open Google Cloud Console.
+2. Create an OAuth 2.0 client for a web application.
+3. Add this redirect URI:
 
-> The OAuth consent screen scope required is `https://www.googleapis.com/auth/calendar.readonly`
-
----
-
-## Microsoft Calendar Setup
-
-1. Go to [Azure Portal](https://portal.azure.com/) → **Azure Active Directory** → **App registrations** → **New registration**
-2. Set **Supported account types** to match your org (single tenant, or "Accounts in any org directory" for personal/work)
-3. Under **Redirect URIs** add a **Web** redirect:
+   ```text
+   http://your-host:3050/auth/google/callback
    ```
-   http://homebridge.local:3050/auth/microsoft/callback
+
+4. Enable Google Calendar API.
+5. Paste the client ID and client secret into the Settings panel.
+6. Click Connect Google.
+
+Required scope:
+
+```text
+https://www.googleapis.com/auth/calendar.readonly
+```
+
+## Microsoft 365 Setup
+
+1. Open Azure Portal.
+2. Create an App Registration.
+3. Add this web redirect URI:
+
+   ```text
+   http://your-host:3050/auth/microsoft/callback
    ```
-4. Go to **Certificates & secrets** → **New client secret** - copy the **Value**
-5. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated**:
+
+4. Create a client secret and copy its value.
+5. Add delegated Microsoft Graph permissions:
    - `Calendars.Read`
    - `User.Read`
    - `offline_access`
-6. In the nextUp Settings panel, paste the **Application (client) ID**, **Directory (tenant) ID**, and **Client Secret**, then click **Connect Microsoft**
+6. Paste the client ID, tenant ID, and client secret into the Settings panel.
+7. Click Connect Microsoft.
 
-> Multi-factor authentication is handled transparently by the Microsoft login page.
+## API Surface
 
----
+### Read calendar feed
 
-## Deployment Script
+`GET /jsonCalendar?timeframe=<value>`
 
-`deploy.ps1` automates deployment to your Homebridge host over SSH from a Windows machine.
+This endpoint returns cached events from the in-memory store. It requires a bearer token:
 
-### Usage
-
-```powershell
-# Basic - uses defaults (homebridge.local, port 3050)
-.\deploy.ps1
-
-# Custom host
-.\deploy.ps1 -Host myserver.local
-
-# Custom SSH user and key
-.\deploy.ps1 -Host homebridge.local -User pi -SshKey ~/.ssh/id_rsa
-
-# Specify a remote directory
-.\deploy.ps1 -RemoteDir /opt/nextup-calendar
-
-# Force a clean rebuild of the Docker image
-.\deploy.ps1 -Rebuild
+```http
+Authorization: Bearer <API_READ_TOKEN>
 ```
 
-### Parameters
+Supported `timeframe` formats:
 
-| Parameter | Default | Description |
-|---|---|---|
-| `-Host` | `homebridge.local` | Hostname or IP of the Homebridge server |
-| `-User` | `pi` | SSH username |
-| `-SshKey` | *(system default)* | Path to SSH private key |
-| `-RemoteDir` | `/opt/nextup-calendar` | Deployment directory on the remote host |
-| `-AppUrl` | `http://<Host>:3050` | Public URL for OAuth callbacks |
-| `-Port` | `3050` | Port to expose |
-| `-Rebuild` | `false` | Force Docker image rebuild (`--no-cache`) |
-| `-Branch` | `main` | Git branch to deploy |
-
----
-
-## Architecture
-
-```
-nextUp-calendar/
-├── server.js               # Express entry point, /jsonCalendar route
-├── routes/
-│   ├── auth.js             # OAuth2 flows (Google + Microsoft)
-│   ├── calendar.js         # /api/calendar/events endpoint (cache-backed)
-│   └── settings.js         # /api/settings CRUD
-├── services/
-│   ├── cache.js            # In-memory event cache + 15-min background sync
-│   ├── store.js            # AES-256-GCM encrypted JSON storage
-│   ├── google.js           # Google Calendar API (auto token refresh)
-│   └── microsoft.js        # Microsoft Graph API (manual token refresh)
-└── public/
-    ├── index.html
-    ├── css/app.css         # CSS custom properties, dark/light themes
-    └── js/
-        ├── app.js          # Main controller, navigation, routing
-        ├── calendar.js     # View renderers (continuous/day/week/month)
-        ├── search.js       # Fuzzy search overlay
-        └── settings.js     # Settings drawer
-```
-
-### Token security
-
-- On first boot a random 256-bit encryption key is written to `data/.enc_key` (mode 0600)
-- All tokens and credential values are encrypted with **AES-256-GCM** before being written to `data/tokens.json` and `data/settings.json`
-- The `./data` directory should be a Docker volume - it is excluded from git via `.gitignore`
-- The server never exposes client secrets through any API response
-
----
-
-## Views
-
-| View | Keyboard shortcut | Description |
-|---|---|---|
-| Continuous | `∞` tab | Vertical timeline grouped by day, auto-scrolls to today |
-| Day | `D` tab | Hourly grid for a single day with current-time indicator |
-| Week | `W` tab | 7-column hourly grid; overlapping events shown side-by-side |
-| Month | `M` tab | 6-week grid with event pills |
-
-**Navigation:** `←` / `→` arrow keys, or the chevron buttons in the header. Press `T` to jump to today.
-
-**Search:** Press any key (when not in an input field) or `/` to open the fuzzy search overlay. Use `↑` / `↓` to navigate results, `Enter` to select, `Esc` to close.
-
----
-
-## JSON Calendar Feed
-
-A public, unauthenticated endpoint exposes cached events as structured JSON for other LAN clients (dashboards, home automation, scripts).
-
-```
-GET /jsonCalendar?timeframe=<value>
-```
-
-The `timeframe` parameter specifies how far forward from **now** to return events:
-
-| Unit | Example | Meaning |
-|------|---------|---------|
-| `h`  | `24h`   | Next 24 hours |
-| `d`  | `7d`    | Next 7 days |
-| `m`  | `3m`    | Next 3 months (max: `12m`) |
-
-**Example response:**
-
-```json
-{
-  "generated": "2026-04-15T10:00:00.000Z",
-  "timeframe": "7d",
-  "from": "2026-04-15T10:00:00.000Z",
-  "to": "2026-04-22T10:00:00.000Z",
-  "count": 12,
-  "events": [
-    {
-      "id": "g_abc123",
-      "title": "Team standup",
-      "start": "2026-04-15T09:00:00.000Z",
-      "end": "2026-04-15T09:30:00.000Z",
-      "isAllDay": false,
-      "location": "",
-      "calendarName": "Work",
-      "source": "google"
-    }
-  ]
-}
-```
-
-Events are served from the in-memory cache (populated on boot and refreshed every 15 minutes), so the response is instant. The endpoint is intentionally unauthenticated - keep it on your LAN.
-
----
-
-## Data persistence
-
-The `./data` directory contains all runtime state:
-
-| File | Contents |
+| Example | Meaning |
 |---|---|
-| `data/.enc_key` | Auto-generated encryption key (never commit) |
-| `data/.session_secret` | Auto-generated session secret (never commit) |
-| `data/tokens.json` | Encrypted OAuth tokens |
-| `data/settings.json` | App settings including encrypted credentials |
+| `24h` | Next 24 hours |
+| `7d` | Next 7 days |
+| `3m` | Next 3 months |
 
-When updating the container, mount `./data` as a volume to preserve authentication state:
+The server caps month-based requests at 12 months.
 
-```yaml
-volumes:
-  - ./data:/app/data
+Example:
+
+```bash
+curl -H "Authorization: Bearer $API_READ_TOKEN" \
+  "http://homebridge.local:3050/jsonCalendar?timeframe=7d"
 ```
 
----
+### Push external events
 
-## Updating
+`POST /events`
+
+This endpoint lets automation tools push an external event set into the cache. Each request replaces the previously pushed external events.
+
+Authentication:
+
+```http
+Authorization: Bearer <API_WRITE_TOKEN>
+```
+
+Example:
+
+```bash
+curl -X POST "http://homebridge.local:3050/events" \
+  -H "Authorization: Bearer $API_WRITE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "events": [
+      {
+        "id": "automation-standup",
+        "title": "Standup",
+        "start": "2026-04-22T09:00:00",
+        "end": "2026-04-22T09:15:00",
+        "calendarName": "Automation"
+      }
+    ]
+  }'
+```
+
+Recurring external events are supported through the `recurrence` object described in [openapi.yaml](openapi.yaml).
+
+### Health and schema
+
+- `GET /health` returns a simple health response
+- `GET /openapi.yaml` serves the OpenAPI document for the write and read APIs
+
+## Views And Shortcuts
+
+| View | Description |
+|---|---|
+| Continuous | Rolling timeline of upcoming days and events |
+| Day | Single-day hourly layout |
+| Week | Seven-column week grid |
+| Month | Month grid with configurable event count per day |
+
+Keyboard shortcuts:
+
+- `Left` / `Right` to navigate
+- `T` to jump to today
+- `/` or most printable keys to open search
+- `Esc` to close overlays
+
+## Docker Deployment Notes
+
+The included [docker-compose.yml](docker-compose.yml) mounts `./data:/app/data`, which preserves settings, tokens, and generated secrets across restarts.
+
+To update an existing deployment:
 
 ```bash
 git pull
 docker compose up -d --build
 ```
 
-Or with the PowerShell script:
+## Windows Deployment Script
+
+The included PowerShell deploy script copies or updates the repo on a remote Docker host over SSH and starts the container there.
+
+Basic usage:
 
 ```powershell
-.\deploy.ps1 -Rebuild
+.\deploy.ps1
 ```
 
----
+Examples:
+
+```powershell
+.\deploy.ps1 -TargetHost homebridge.local
+.\deploy.ps1 -TargetHost 192.168.1.50 -User pi -Rebuild
+.\deploy.ps1 -SshKey ~/.ssh/id_rsa -RemoteDir /opt/nextup-calendar
+```
+
+Parameters:
+
+| Parameter | Default |
+|---|---|
+| `-TargetHost` | `homebridge.local` |
+| `-User` | `pi` |
+| `-SshKey` | system default |
+| `-RemoteDir` | `/home/pi/portainer_data/nextup-calendar` |
+| `-AppUrl` | `http://<TargetHost>:3050` |
+| `-Port` | `3050` |
+| `-Rebuild` | off |
+| `-Branch` | `main` |
 
 ## Electron Desktop Widget
 
-A lightweight always-on-top desktop widget that shows today's and tomorrow's events, powered by the `/jsonCalendar` feed. Features a large background clock watermark behind the event list.
+The Electron widget is a separate desktop companion that reads from `GET /jsonCalendar` using `API_READ_TOKEN`.
 
-### Pre-built exe
-
-A portable single-file exe is built to `electron/dist/nextup-calendar.exe` — no installer, no admin rights required. Copy it (or a shortcut) to `shell:startup` to run on login:
-
-```powershell
-copy "electron\dist\nextup-calendar.exe" "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\"
-```
-
-### Build from source
+### Build
 
 ```bash
 cd electron
-cp .env.example .env
-# Edit .env — set SERVER_URL to your nextUp server address
 npm install
 npm run build
-# Output: electron/dist/nextup-calendar.exe
 ```
 
-### Development (no compile step)
+The build output is written to `electron/dist/nextup-calendar.exe`.
+
+### Configure
+
+The widget reads build-time values from `electron/.env`:
 
 ```bash
-cd electron
+SERVER_URL=http://homebridge.local:3050
+READ_TOKEN=your-api-read-token
+```
+
+Rebuild the executable after changing those values.
+
+### Development
+
+From the repository root:
+
+```bash
+npm run widget
+```
+
+Or inside `electron/`:
+
+```bash
 npm start
 ```
 
-### Behaviour
+## Project Structure
 
-- **Always-on-top** frameless widget, 320×480px, positioned bottom-right by default
-- **Window position is saved** — drag it anywhere, position is restored on next launch
-- **Single instance** — launching a second copy focuses the existing window instead
-- **System tray icon** — left-click to show/hide; right-click for Refresh / Exit
-- **Auto-refreshes** every 15 minutes; also refreshes each time the widget is shown via the tray
-- **Dark theme** matching the web app design system
-
-### Configuration
-
-`electron/.env` (baked into the exe at build time):
-
-```bash
-SERVER_URL=https://your-nextup-server
+```text
+nextUp-calendar/
+├── server.js
+├── routes/
+├── services/
+├── middleware/
+├── public/
+├── electron/
+├── data/
+├── docker-compose.yml
+└── openapi.yaml
 ```
-
-> If you change `SERVER_URL`, re-run `npm run build` to produce an updated exe.
-
----
 
 ## License
 
-MIT - see [LICENSE](LICENSE)
+MIT. See [LICENSE](LICENSE).
