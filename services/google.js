@@ -55,6 +55,33 @@ async function exchangeCode(code) {
   return tokens;
 }
 
+async function getAllCalendars(calendarApi) {
+  const calendars = [];
+  let pageToken;
+
+  do {
+    const resp = await calendarApi.calendarList.list({
+      minAccessRole: 'reader',
+      maxResults: 250,
+      pageToken,
+    });
+
+    calendars.push(...(resp.data.items || []));
+    pageToken = resp.data.nextPageToken;
+  } while (pageToken);
+
+  return calendars;
+}
+
+function filterDisabledCalendars(calendarList) {
+  const disabled = getSettings().googleDisabledCalendars || [];
+  if (disabled.length === 0 || calendarList.length <= 1) {
+    return calendarList;
+  }
+
+  return calendarList.filter((cal) => !disabled.includes(cal.id));
+}
+
 // ── Fetch calendar events ────────────────────────────────────
 async function getCalendarEvents(startISO, endISO) {
   const tokens = getTokens();
@@ -68,18 +95,13 @@ async function getCalendarEvents(startISO, endISO) {
   // Fetch all calendars the user has access to
   let calendarList;
   try {
-    const resp = await calendarApi.calendarList.list({ minAccessRole: 'reader' });
-    calendarList = resp.data.items || [];
+    calendarList = await getAllCalendars(calendarApi);
   } catch (err) {
     console.error('[google] calendarList error:', err.message);
     return [];
   }
 
-  // Skip calendars the user has disabled
-  const disabled = getSettings().googleDisabledCalendars || [];
-  if (disabled.length > 0) {
-    calendarList = calendarList.filter((cal) => !disabled.includes(cal.id));
-  }
+  calendarList = filterDisabledCalendars(calendarList);
 
   const results = await Promise.allSettled(
     calendarList.map((cal) =>
@@ -117,8 +139,8 @@ async function listCalendars() {
 
   const calendarApi = google.calendar({ version: 'v3', auth: client });
 
-  const resp = await calendarApi.calendarList.list({ minAccessRole: 'reader' });
-  return (resp.data.items || []).map((cal) => ({
+  const calendars = await getAllCalendars(calendarApi);
+  return calendars.map((cal) => ({
     id: cal.id,
     name: cal.summary || cal.id,
     color: cal.backgroundColor || null,

@@ -56,6 +56,11 @@ const SettingsPanel = (() => {
       const resp = await fetch(`/api/calendars/${provider}`);
       if (!resp.ok) throw new Error(`calendars API ${resp.status}`);
       const calendars = await resp.json();
+      const shouldEnableSingleGoogleCalendar =
+        provider === 'google' &&
+        calendars.length === 1 &&
+        disabledIds.includes(calendars[0].id);
+      const effectiveDisabledIds = shouldEnableSingleGoogleCalendar ? [] : disabledIds;
 
       if (!Array.isArray(calendars) || calendars.length === 0) {
         container.innerHTML = '<span class="cal-checklist-error">No calendars found</span>';
@@ -64,7 +69,7 @@ const SettingsPanel = (() => {
 
       container.innerHTML = '';
       calendars.forEach((cal) => {
-        const checked = !disabledIds.includes(cal.id);
+        const checked = !effectiveDisabledIds.includes(cal.id);
         const row = document.createElement('label');
         row.className = 'cal-check-row';
 
@@ -82,6 +87,10 @@ const SettingsPanel = (() => {
         row.appendChild(name);
         container.appendChild(row);
       });
+
+      if (shouldEnableSingleGoogleCalendar) {
+        await saveCalendarSelection(provider);
+      }
     } catch {
       container.innerHTML = '<span class="cal-checklist-error">Could not load calendars</span>';
     }
