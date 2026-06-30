@@ -244,6 +244,17 @@ const SettingsPanel = (() => {
 
     if (!badge) return;
 
+    // iOS requires the app to be running in standalone mode (Add to Home Screen)
+    const isIOS        = /iP(ad|hone|od)/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+    if (isIOS && !isStandalone) {
+      badge.textContent = 'Home Screen only';
+      badge.className   = 'notif-status-badge notif-badge--unsupported';
+      unsupEl?.classList.remove('hidden');
+      actionsEl?.classList.add('hidden');
+      return;
+    }
+
     const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
 
     if (!supported) {
@@ -267,16 +278,22 @@ const SettingsPanel = (() => {
       return;
     }
 
-    // Set a definite state immediately — will be refined once we query the subscription
+    // Set a definite state immediately — updated async once we confirm subscription status
     badge.textContent = 'Not enabled';
     badge.className   = 'notif-status-badge notif-badge--off';
     enableBtn?.classList.remove('hidden');
     disableBtn?.classList.add('hidden');
 
-    // Async: check for an existing push subscription
+    // Async: refine status by checking for an existing push subscription.
+    // Use a 3s timeout so a broken SW registration doesn't hang the UI indefinitely.
     try {
-      const swReg = await navigator.serviceWorker.ready;
-      const sub   = await swReg.pushManager.getSubscription();
+      const swReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise(resolve => setTimeout(() => resolve(null), 3000)),
+      ]);
+      if (!swReg) return; // SW not ready yet — leave as 'Not enabled'
+
+      const sub = await swReg.pushManager.getSubscription();
       if (sub) {
         badge.textContent = 'Enabled';
         badge.className   = 'notif-status-badge notif-badge--on';
@@ -289,52 +306,77 @@ const SettingsPanel = (() => {
   }
 
   async function enableNotifications() {
-    const enableBtn  = document.getElementById('btn-notif-enable');
-    if (enableBtn) enableBtn.disabled = true;
+    const enableBtn = document.getElementById('btn-notif-enable');
+    const origText  = enableBtn?.textContent;
+    if (enableBtn) {
+      enableBtn.disabled    = true;
+      enableBtn.textContent = 'Enabling…';
+    }
 
     try {
       // 1. Fetch VAPID public key
       const keyResp = await fetch('/api/notifications/vapid-public-key');
-      if (!keyResp.ok) throw new Error('Could not retrieve VAPID key');
+      if (!keyResp.ok) throw new Error('Server error retrieving push key — try restarting the server');
       const { publicKey } = await keyResp.json();
 
       // 2. Request notification permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        App.toast('Notification permission was not granted', 'error');
+        App.toast('Notification permission denied — check your browser settings', 'error');
         return;
       }
 
-      // 3. Subscribe via push manager
-      const swReg = await navigator.serviceWorker.ready;
+      // 3. Wait for service worker (8s timeout for slow connections)
+      const swReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Service worker timed out — reload the page and try again')), 8000)
+        ),
+      ]);
 
+      // 4. Subscribe
       const sub = await swReg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
-      // 4. Send subscription to server
+      // 5. Send subscription to server
       const subResp = await fetch('/api/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sub.toJSON()),
       });
-      if (!subResp.ok) throw new Error('Failed to register subscription');
+      if (!subResp.ok) throw new Error('Failed to register subscription with server');
 
       App.toast('Notifications enabled', 'success');
     } catch (err) {
       App.toast(err.message || 'Failed to enable notifications', 'error');
     } finally {
-      if (enableBtn) enableBtn.disabled = false;
+      if (enableBtn) {
+        enableBtn.disabled    = false;
+        enableBtn.textContent = origText || 'Enable Notifications';
+      }
       refreshNotifStatus();
     }
   }
 
   async function disableNotifications() {
+    const disableBtn = document.getElementById('btn-notif-disable');
+    const origText   = disableBtn?.textContent;
+    if (disableBtn) {
+      disableBtn.disabled    = true;
+      disableBtn.textContent = 'Disabling…';
+    }
+
     try {
-      const swReg = await navigator.serviceWorker.ready;
-      const sub   = await swReg.pushManager.getSubscription();
-      if (!sub) { await refreshNotifStatus(); return; }
+      const swReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Service worker timed out')), 5000)
+        ),
+      ]);
+      const sub = await swReg.pushManager.getSubscription();
+      if (!sub) return;
 
       // Unsubscribe at browser level
       const endpoint = sub.endpoint;
@@ -351,6 +393,10 @@ const SettingsPanel = (() => {
     } catch (err) {
       App.toast(err.message || 'Failed to disable notifications', 'error');
     } finally {
+      if (disableBtn) {
+        disableBtn.disabled    = false;
+        disableBtn.textContent = origText || 'Disable Notifications';
+      }
       refreshNotifStatus();
     }
   }
