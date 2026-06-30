@@ -16,6 +16,10 @@ const App = (() => {
     loading:    false,
   };
 
+  let _swRegistration = null;
+
+  function getSwRegistration() { return _swRegistration; }
+
   // ── DOM refs ──────────────────────────────────────────────────
 
   const calRoot    = () => document.getElementById('calendar-root');
@@ -61,6 +65,15 @@ const App = (() => {
       .addEventListener('click', () => {
         document.getElementById('event-popover').classList.add('hidden');
       });
+
+    // Register service worker for push notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        _swRegistration = reg;
+      }).catch((err) => {
+        console.warn('[app] Service worker registration failed:', err);
+      });
+    }
   }
 
   // ── Load settings ─────────────────────────────────────────────
@@ -415,7 +428,7 @@ const App = (() => {
 
   // ── Public API ────────────────────────────────────────────────
 
-  return { init, applyTheme, applySettings, toast };
+  return { init, applyTheme, applySettings, toast, getSwRegistration };
 
 })();
 

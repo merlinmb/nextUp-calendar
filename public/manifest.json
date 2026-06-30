@@ -1,0 +1,19 @@
+{
+  "name": "nextUp Calendar",
+  "short_name": "nextUp",
+  "description": "Your upcoming calendar events at a glance",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0d0d0f",
+  "theme_color": "#0d0d0f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

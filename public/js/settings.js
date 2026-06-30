@@ -179,6 +179,9 @@ const SettingsPanel = (() => {
         loadCalendarList('microsoft', 'ms-cal-items', s.microsoftDisabledCalendars || []);
       }
     }
+
+    // Notification settings
+    renderNotificationSettings(s);
   }
 
   function setVal(id, val) {
@@ -206,11 +209,172 @@ const SettingsPanel = (() => {
     return active?.dataset.val ?? null;
   }
 
+  // ── Notification settings ─────────────────────────────────────
+
+  function renderNotificationSettings(s) {
+    const n = s.notifications || {};
+    const mbEl   = document.getElementById('notif-minutes-before');
+    const atEl   = document.getElementById('notif-allday-time');
+    const adEl   = document.getElementById('notif-allday-days');
+
+    if (mbEl) mbEl.value = n.minutesBefore   ?? 10;
+    if (atEl) atEl.value = n.allDayTime       || '08:00';
+    if (adEl) adEl.value = n.allDayDaysBefore ?? 1;
+
+    refreshNotifStatus();
+  }
+
+  /**
+   * Convert a base64url VAPID public key to a Uint8Array that
+   * pushManager.subscribe() expects as applicationServerKey.
+   */
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw     = atob(base64);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+
+  async function refreshNotifStatus() {
+    const badge      = document.getElementById('notif-status-badge');
+    const unsupEl    = document.getElementById('notif-unsupported');
+    const actionsEl  = document.getElementById('notif-actions');
+    const enableBtn  = document.getElementById('btn-notif-enable');
+    const disableBtn = document.getElementById('btn-notif-disable');
+
+    if (!badge) return;
+
+    const supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+
+    if (!supported) {
+      badge.textContent = 'Not supported';
+      badge.className   = 'notif-status-badge notif-badge--unsupported';
+      unsupEl?.classList.remove('hidden');
+      actionsEl?.classList.add('hidden');
+      return;
+    }
+
+    unsupEl?.classList.add('hidden');
+    actionsEl?.classList.remove('hidden');
+
+    const permission = Notification.permission;
+
+    if (permission === 'denied') {
+      badge.textContent = 'Blocked';
+      badge.className   = 'notif-status-badge notif-badge--denied';
+      enableBtn?.classList.add('hidden');
+      disableBtn?.classList.add('hidden');
+      return;
+    }
+
+    // Check whether we have an active push subscription
+    try {
+      const swReg = App.getSwRegistration();
+      if (!swReg) {
+        badge.textContent = 'Not enabled';
+        badge.className   = 'notif-status-badge notif-badge--off';
+        enableBtn?.classList.remove('hidden');
+        disableBtn?.classList.add('hidden');
+        return;
+      }
+
+      const sub = await swReg.pushManager.getSubscription();
+      if (sub) {
+        badge.textContent = 'Enabled';
+        badge.className   = 'notif-status-badge notif-badge--on';
+        enableBtn?.classList.add('hidden');
+        disableBtn?.classList.remove('hidden');
+      } else {
+        badge.textContent = 'Not enabled';
+        badge.className   = 'notif-status-badge notif-badge--off';
+        enableBtn?.classList.remove('hidden');
+        disableBtn?.classList.add('hidden');
+      }
+    } catch {
+      badge.textContent = 'Not enabled';
+      badge.className   = 'notif-status-badge notif-badge--off';
+      enableBtn?.classList.remove('hidden');
+      disableBtn?.classList.add('hidden');
+    }
+  }
+
+  async function enableNotifications() {
+    const enableBtn  = document.getElementById('btn-notif-enable');
+    if (enableBtn) enableBtn.disabled = true;
+
+    try {
+      // 1. Fetch VAPID public key
+      const keyResp = await fetch('/api/notifications/vapid-public-key');
+      if (!keyResp.ok) throw new Error('Could not retrieve VAPID key');
+      const { publicKey } = await keyResp.json();
+
+      // 2. Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        App.toast('Notification permission was not granted', 'error');
+        return;
+      }
+
+      // 3. Subscribe via push manager
+      const swReg = App.getSwRegistration();
+      if (!swReg) throw new Error('Service worker not ready — try reloading the page');
+
+      const sub = await swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      // 4. Send subscription to server
+      const subResp = await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub.toJSON()),
+      });
+      if (!subResp.ok) throw new Error('Failed to register subscription');
+
+      App.toast('Notifications enabled', 'success');
+    } catch (err) {
+      App.toast(err.message || 'Failed to enable notifications', 'error');
+    } finally {
+      if (enableBtn) enableBtn.disabled = false;
+      refreshNotifStatus();
+    }
+  }
+
+  async function disableNotifications() {
+    try {
+      const swReg = App.getSwRegistration();
+      if (!swReg) return;
+
+      const sub = await swReg.pushManager.getSubscription();
+      if (!sub) { await refreshNotifStatus(); return; }
+
+      // Unsubscribe at browser level
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+
+      // Remove from server
+      await fetch('/api/notifications/unsubscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      });
+
+      App.toast('Notifications disabled', 'success');
+    } catch (err) {
+      App.toast(err.message || 'Failed to disable notifications', 'error');
+    } finally {
+      refreshNotifStatus();
+    }
+  }
+
   // ── Save ──────────────────────────────────────────────────────
 
   async function save() {
     const cdRaw = parseInt(document.getElementById('setting-continuous-days').value, 10);
     const mmRaw = parseInt(document.getElementById('setting-month-max-events').value, 10);
+    const mbRaw = parseInt(document.getElementById('notif-minutes-before')?.value || '10', 10);
+    const adRaw = parseInt(document.getElementById('notif-allday-days')?.value || '1',  10);
 
     const body = {
       view:      getSegment('setting-view')       || 'continuous',
@@ -226,10 +390,15 @@ const SettingsPanel = (() => {
         tenantId:     document.getElementById('ms-tenant-id').value.trim() || 'common',
         clientSecret: document.getElementById('ms-client-secret').value || undefined,
       },
+      notifications: {
+        allDayTime: document.getElementById('notif-allday-time')?.value || '08:00',
+      },
     };
 
     if (!Number.isNaN(cdRaw)) body.continuousDays = cdRaw;
     if (!Number.isNaN(mmRaw)) body.monthMaxEvents  = mmRaw;
+    if (!Number.isNaN(mbRaw)) body.notifications.minutesBefore    = mbRaw;
+    if (!Number.isNaN(adRaw)) body.notifications.allDayDaysBefore = adRaw;
 
     try {
       const resp = await fetch('/api/settings', {
@@ -352,6 +521,12 @@ const SettingsPanel = (() => {
       .addEventListener('click', () => saveCredentialsAndRedirect('microsoft'));
     document.getElementById('btn-disconnect-microsoft')
       .addEventListener('click', () => disconnect('microsoft'));
+
+    // Notification enable / disable
+    document.getElementById('btn-notif-enable')
+      ?.addEventListener('click', enableNotifications);
+    document.getElementById('btn-notif-disable')
+      ?.addEventListener('click', disableNotifications);
 
     bindSegmentedControls();
 

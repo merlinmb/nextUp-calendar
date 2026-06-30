@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="nextUp" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>nextUp</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -234,6 +242,47 @@
             <label class="sfield-label" for="setting-month-max-events">Month view — max events per cell</label>
             <input class="sfield-input sfield-input--short" id="setting-month-max-events"
                    type="number" min="1" max="10" step="1" placeholder="3" />
+          </div>
+        </section>
+
+        <!-- ── Notifications ─────────────── -->
+        <section class="ssec" id="notif-section">
+          <div class="ssec-head">
+            <span class="ssec-label">Notifications</span>
+            <span class="notif-status-badge" id="notif-status-badge">Checking…</span>
+          </div>
+
+          <!-- Unsupported platform message -->
+          <p class="notif-unsupported hidden" id="notif-unsupported">
+            Push notifications require iOS&nbsp;16.4+ with the app added to your
+            Home&nbsp;Screen, or a supported desktop browser.
+          </p>
+
+          <!-- Subscribe / unsubscribe actions (shown when supported) -->
+          <div class="ssec-actions" id="notif-actions">
+            <button class="btn btn-accent" id="btn-notif-enable">Enable Notifications</button>
+            <button class="btn btn-ghost-danger hidden" id="btn-notif-disable">Disable Notifications</button>
+          </div>
+
+          <!-- Settings fields -->
+          <div id="notif-settings-fields">
+            <div class="sfield">
+              <label class="sfield-label" for="notif-minutes-before">Minutes before timed events</label>
+              <input class="sfield-input sfield-input--short" id="notif-minutes-before"
+                     type="number" min="1" max="120" step="1" placeholder="10" />
+            </div>
+
+            <div class="sfield">
+              <label class="sfield-label" for="notif-allday-time">All-day event alert time</label>
+              <input class="sfield-input sfield-input--short" id="notif-allday-time"
+                     type="time" placeholder="08:00" />
+            </div>
+
+            <div class="sfield">
+              <label class="sfield-label" for="notif-allday-days">All-day events — days before</label>
+              <input class="sfield-input sfield-input--short" id="notif-allday-days"
+                     type="number" min="0" max="7" step="1" placeholder="1" />
+            </div>
           </div>
         </section>
 

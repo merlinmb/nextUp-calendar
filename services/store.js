@@ -16,6 +16,7 @@ const DATA_DIR = path.join(__dirname, '../data');
 const ENC_KEY_FILE = path.join(DATA_DIR, '.enc_key');
 const TOKENS_FILE = path.join(DATA_DIR, 'tokens.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const SUBSCRIPTIONS_FILE = path.join(DATA_DIR, 'subscriptions.json');
 
 // ── Encryption helpers ───────────────────────────────────────
 
@@ -117,6 +118,15 @@ const DEFAULTS = {
   microsoftDisabledCalendars: [],
   google: { clientId: '', clientSecret: '' },
   microsoft: { clientId: '', tenantId: 'common', clientSecret: '' },
+  notifications: {
+    enabled: true,
+    minutesBefore: 10,
+    allDayTime: '08:00',
+    allDayDaysBefore: 1,
+  },
+  // VAPID keys — generated on first boot, stored here
+  vapidPublicKey: '',
+  vapidPrivateKey: '',
 };
 
 function getSettings() {
@@ -153,10 +163,45 @@ function deepMerge(base, override) {
   return result;
 }
 
+// ── Subscription store ───────────────────────────────────────
+
+function getSubscriptions() {
+  ensureDataDir();
+  if (!fs.existsSync(SUBSCRIPTIONS_FILE)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(SUBSCRIPTIONS_FILE, 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
+function saveSubscription(sub) {
+  ensureDataDir();
+  const subs = getSubscriptions();
+  const idx  = subs.findIndex((s) => s.endpoint === sub.endpoint);
+  if (idx >= 0) {
+    subs[idx] = sub; // update
+  } else {
+    subs.push(sub);
+  }
+  fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2));
+}
+
+function removeSubscription(endpoint) {
+  if (!fs.existsSync(SUBSCRIPTIONS_FILE)) return;
+  try {
+    const subs = getSubscriptions().filter((s) => s.endpoint !== endpoint);
+    fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2));
+  } catch {}
+}
+
 module.exports = {
   getTokens,
   saveToken,
   removeToken,
   getSettings,
   saveSettings,
+  getSubscriptions,
+  saveSubscription,
+  removeSubscription,
 };

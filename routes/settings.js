@@ -29,6 +29,13 @@ router.get('/', (req, res) => {
     },
     // Effective URL: saved setting takes priority over env var
     appUrl: s.appUrl || process.env.APP_URL || 'http://homebridge.local:3050',
+    // Notification preferences
+    notifications: {
+      enabled:          s.notifications?.enabled          ?? true,
+      minutesBefore:    s.notifications?.minutesBefore    ?? 10,
+      allDayTime:       s.notifications?.allDayTime       ?? '08:00',
+      allDayDaysBefore: s.notifications?.allDayDaysBefore ?? 1,
+    },
   });
 });
 
@@ -56,7 +63,19 @@ router.post('/', (req, res) => {
     appUrl: body.appUrl !== undefined ? body.appUrl.trim() : current.appUrl,
     google: { ...current.google },
     microsoft: { ...current.microsoft },
+    notifications: { ...(current.notifications || {}) },
   };
+
+  // Notification preferences
+  if (body.notifications && typeof body.notifications === 'object') {
+    const n       = body.notifications;
+    const curr_n  = current.notifications || {};
+    const allDayTimeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (typeof n.enabled === 'boolean')        updated.notifications.enabled          = n.enabled;
+    if (Number.isInteger(n.minutesBefore)    && n.minutesBefore    >= 1  && n.minutesBefore    <= 120) updated.notifications.minutesBefore    = n.minutesBefore;
+    if (typeof n.allDayTime === 'string'     && allDayTimeRe.test(n.allDayTime))                       updated.notifications.allDayTime       = n.allDayTime;
+    if (Number.isInteger(n.allDayDaysBefore) && n.allDayDaysBefore >= 0  && n.allDayDaysBefore <= 7)   updated.notifications.allDayDaysBefore = n.allDayDaysBefore;
+  }
 
   // Only update credential fields when the caller actually sends them
   if (body.google) {

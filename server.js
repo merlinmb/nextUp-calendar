@@ -9,15 +9,19 @@ const helmet  = require('helmet');
 const path    = require('path');
 const fs      = require('fs');
 
-const authRoutes      = require('./routes/auth');
-const calendarRoutes  = require('./routes/calendar');
-const calendarsRoutes = require('./routes/calendars');
-const settingsRoutes  = require('./routes/settings');
-const loginRoutes     = require('./routes/login');
-const eventsRoutes    = require('./routes/events');
-const cache          = require('./services/cache');
+const authRoutes         = require('./routes/auth');
+const calendarRoutes     = require('./routes/calendar');
+const calendarsRoutes    = require('./routes/calendars');
+const settingsRoutes     = require('./routes/settings');
+const loginRoutes        = require('./routes/login');
+const eventsRoutes       = require('./routes/events');
+const notificationsRoutes = require('./routes/notifications');
+const cache              = require('./services/cache');
+const notifications      = require('./services/notifications');
 const { requireReadToken, requireWriteToken } = require('./middleware/auth');
 const { requireUiAuth } = require('./middleware/uiAuth');
+const webpush            = require('web-push');
+const store              = require('./services/store');
 
 const app  = express();
 const PORT = process.env.PORT || 3050;
@@ -49,6 +53,7 @@ app.use(
         fontSrc: ["'self'", 'fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'"],
+        workerSrc: ["'self'"],
         // Only upgrade requests when actually serving HTTPS
         ...(isHttps ? {} : { upgradeInsecureRequests: null }),
       },
@@ -167,19 +172,35 @@ app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js',  express.static(path.join(__dirname, 'public', 'js')));
 app.get('/favicon.svg', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 app.get('/favicon.ico', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
+// Service worker and PWA manifest must be accessible without auth
+app.get('/sw.js',        (_req, res) => res.sendFile(path.join(__dirname, 'public', 'sw.js')));
+app.get('/manifest.json', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'manifest.json')));
 
 // ── UI-authenticated routes ───────────────────────────────────
 // All remaining routes (including serving index.html) require the UI session
 app.use(requireUiAuth);
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/auth',          authRoutes);
-app.use('/api/calendar',   calendarRoutes);
-app.use('/api/calendars',  calendarsRoutes);
-app.use('/api/settings',   settingsRoutes);
+app.use('/auth',                  authRoutes);
+app.use('/api/calendar',          calendarRoutes);
+app.use('/api/calendars',         calendarsRoutes);
+app.use('/api/settings',          settingsRoutes);
+app.use('/api/notifications',     notificationsRoutes);
 
 // ── Start background cache sync ───────────────────────────────
 cache.startScheduler();
-
+// ── Initialise VAPID keys and start notification scheduler ──────
+(function initVapidAndNotifications() {
+  let settings = store.getSettings();
+  if (!settings.vapidPublicKey || !settings.vapidPrivateKey) {
+    const keys = webpush.generateVAPIDKeys();
+    settings = { ...settings, vapidPublicKey: keys.publicKey, vapidPrivateKey: keys.privateKey };
+    store.saveSettings(settings);
+    console.log('[notifications] VAPID keys generated and saved');
+  }
+  const appUrl = settings.appUrl || process.env.APP_URL || `http://localhost:${PORT}`;
+  webpush.setVapidDetails(`mailto:admin@${new URL(appUrl).hostname}`, settings.vapidPublicKey, settings.vapidPrivateKey);
+  notifications.start();
+})();
 // ── Start ────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
   const appUrl = process.env.APP_URL || `http://homebridge.local:${PORT}`;
