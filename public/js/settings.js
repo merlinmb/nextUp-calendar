@@ -267,34 +267,24 @@ const SettingsPanel = (() => {
       return;
     }
 
-    // Check whether we have an active push subscription
-    try {
-      const swReg = App.getSwRegistration();
-      if (!swReg) {
-        badge.textContent = 'Not enabled';
-        badge.className   = 'notif-status-badge notif-badge--off';
-        enableBtn?.classList.remove('hidden');
-        disableBtn?.classList.add('hidden');
-        return;
-      }
+    // Set a definite state immediately — will be refined once we query the subscription
+    badge.textContent = 'Not enabled';
+    badge.className   = 'notif-status-badge notif-badge--off';
+    enableBtn?.classList.remove('hidden');
+    disableBtn?.classList.add('hidden');
 
-      const sub = await swReg.pushManager.getSubscription();
+    // Async: check for an existing push subscription
+    try {
+      const swReg = await navigator.serviceWorker.ready;
+      const sub   = await swReg.pushManager.getSubscription();
       if (sub) {
         badge.textContent = 'Enabled';
         badge.className   = 'notif-status-badge notif-badge--on';
         enableBtn?.classList.add('hidden');
         disableBtn?.classList.remove('hidden');
-      } else {
-        badge.textContent = 'Not enabled';
-        badge.className   = 'notif-status-badge notif-badge--off';
-        enableBtn?.classList.remove('hidden');
-        disableBtn?.classList.add('hidden');
       }
     } catch {
-      badge.textContent = 'Not enabled';
-      badge.className   = 'notif-status-badge notif-badge--off';
-      enableBtn?.classList.remove('hidden');
-      disableBtn?.classList.add('hidden');
+      // Subscription check failed — leave as 'Not enabled'
     }
   }
 
@@ -316,8 +306,7 @@ const SettingsPanel = (() => {
       }
 
       // 3. Subscribe via push manager
-      const swReg = App.getSwRegistration();
-      if (!swReg) throw new Error('Service worker not ready — try reloading the page');
+      const swReg = await navigator.serviceWorker.ready;
 
       const sub = await swReg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -343,10 +332,8 @@ const SettingsPanel = (() => {
 
   async function disableNotifications() {
     try {
-      const swReg = App.getSwRegistration();
-      if (!swReg) return;
-
-      const sub = await swReg.pushManager.getSubscription();
+      const swReg = await navigator.serviceWorker.ready;
+      const sub   = await swReg.pushManager.getSubscription();
       if (!sub) { await refreshNotifStatus(); return; }
 
       // Unsubscribe at browser level
