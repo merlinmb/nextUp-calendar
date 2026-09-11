@@ -22,7 +22,7 @@ self.addEventListener('push', (event) => {
     tag:     data.eventId || 'nextup-notification',
     // Prevent duplicate notifications for the same event
     renotify: false,
-    data: { url: data.url || '/' },
+    data: { url: data.url || '/dashboard' },
   };
 
   event.waitUntil(
@@ -35,13 +35,13 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification.data?.url || '/';
+  const targetUrl = event.notification.data?.url || '/dashboard';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       // Focus an existing window if one is open
       for (const client of windowClients) {
-        if (new URL(client.url).pathname === '/' && 'focus' in client) {
+        if (new URL(client.url).pathname === targetUrl && 'focus' in client) {
           return client.focus();
         }
       }

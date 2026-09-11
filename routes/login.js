@@ -21,7 +21,7 @@ router.post('/', (req, res) => {
 
   if (passphrase && passphrase === expected) {
     req.session.uiAuthed = true;
-    const returnTo = req.session.returnTo || '/';
+    const returnTo = req.session.returnTo || '/dashboard';
     delete req.session.returnTo;
     return res.redirect(returnTo);
   }

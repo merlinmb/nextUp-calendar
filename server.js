@@ -104,6 +104,7 @@ app.get('/openapi.yaml', (_req, res) => {
 });
 app.use('/login', loginRoutes);
 app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ── Token-authenticated API routes ───────────────────────────
 // POST /events — Power Automate write access
@@ -184,6 +185,7 @@ app.get('/manifest.json', (_req, res) => res.sendFile(path.join(__dirname, 'publ
 // ── UI-authenticated routes ───────────────────────────────────
 // All remaining routes (including serving index.html) require the UI session
 app.use(requireUiAuth);
+app.get('/dashboard', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/auth',                  authRoutes);
 app.use('/api/calendar',          calendarRoutes);

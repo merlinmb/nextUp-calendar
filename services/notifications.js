@@ -139,7 +139,7 @@ async function checkAndSend() {
           title:   ev.title,
           body:    formatAllDayBody(ev.start),
           eventId: ev.id,
-          url:     '/',
+          url:     '/dashboard',
         });
       }
     } else {
@@ -155,7 +155,7 @@ async function checkAndSend() {
           title:   ev.title,
           body:    formatTimedBody(new Date(ev.start)),
           eventId: ev.id,
-          url:     '/',
+          url:     '/dashboard',
         });
       }
     }

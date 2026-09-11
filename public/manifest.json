@@ -3,7 +3,7 @@
   "short_name": "nextUp",
   "description": "Your upcoming calendar events at a glance",
   "display": "standalone",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "background_color": "#0d0d0f",
   "theme_color": "#0d0d0f",
