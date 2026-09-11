@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy - nextUp Calendar</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 0 20px;
+    line-height: 1.6;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 1.6em; }
+  h2 { font-size: 1.15em; margin-top: 1.8em; }
+  .updated { color: #666; font-size: 0.9em; }
+  a { color: #1a56db; }
+</style>
+</head>
+<body>
+
+<h1>Privacy Policy - nextUp Calendar</h1>
+<p class="updated">Last updated: 11 September 2026</p>
+
+<p>nextUp Calendar is a self-hosted, personal calendar dashboard operated by Mark Beets for his own private use. It is not offered as a public or commercial service.</p>
+
+<h2>What data it accesses</h2>
+<p>nextUp Calendar connects to Google Calendar and Microsoft 365 Calendar accounts that the operator explicitly authorises. Using the permissions granted, it reads calendar event data (such as event titles, times, and locations) from those accounts in order to display a combined view in a single web dashboard.</p>
+
+<h2>What data it stores</h2>
+<p>Calendar event data retrieved from connected accounts is cached locally on the operator's own self-hosted server, for the sole purpose of displaying and serving the combined calendar view and the JSON feed described below. No calendar data is shared with, sold to, or processed by any third party.</p>
+
+<h2>Companion feed and API</h2>
+<p>nextUp Calendar exposes a token-protected JSON feed so the operator's own companion clients (for example, dashboard displays) can read the combined calendar data. Access to this feed requires a private access token; it is not publicly accessible. A simple HTTP API also allows the operator to push external events into the local cache for display alongside connected calendar data.</p>
+
+<h2>Data sharing</h2>
+<p>No data accessed through Google Calendar or Microsoft 365 is shared with any third party. Data does not leave the operator's own infrastructure except as needed to communicate with the Google Calendar and Microsoft Graph APIs to retrieve the operator's own calendar data.</p>
+
+<h2>Data retention and deletion</h2>
+<p>Cached calendar data is retained only as needed to serve the dashboard and feed, and is refreshed/overwritten on each sync. Access can be revoked at any time via the connected Google Account's or Microsoft 365 account's third-party app permissions, which stops all further data access.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy can be directed to <a href="mailto:markbeets@gmail.com">markbeets@gmail.com</a>.</p>
+
+</body>
+</html>

@@ -103,6 +103,7 @@ app.get('/openapi.yaml', (_req, res) => {
   res.sendFile(path.join(__dirname, 'openapi.yaml'));
 });
 app.use('/login', loginRoutes);
+app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
 
 // ── Token-authenticated API routes ───────────────────────────
 // POST /events — Power Automate write access
