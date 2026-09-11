@@ -16,6 +16,7 @@ const settingsRoutes     = require('./routes/settings');
 const loginRoutes        = require('./routes/login');
 const eventsRoutes       = require('./routes/events');
 const notificationsRoutes = require('./routes/notifications');
+const mcpRoutes           = require('./routes/mcp');
 const cache              = require('./services/cache');
 const notifications      = require('./services/notifications');
 const { requireReadToken, requireWriteToken } = require('./middleware/auth');
@@ -106,6 +107,9 @@ app.use('/login', loginRoutes);
 // ── Token-authenticated API routes ───────────────────────────
 // POST /events — Power Automate write access
 app.use('/events', requireWriteToken, eventsRoutes);
+
+// POST /mcp — MCP server (Claude, etc.) read access
+app.use('/mcp', requireReadToken, mcpRoutes);
 
 // GET /jsonCalendar — Electron widget read access
 app.get('/jsonCalendar', requireReadToken, (req, res) => {

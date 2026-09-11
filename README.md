@@ -26,6 +26,7 @@ The app has three access surfaces:
 - Web UI: passphrase-protected session login at `/login`
 - Read API: `GET /jsonCalendar` with `Authorization: Bearer <API_READ_TOKEN>`
 - Write API: `POST /events` with `Authorization: Bearer <API_WRITE_TOKEN>`
+- MCP server: `POST /mcp` with `Authorization: Bearer <API_READ_TOKEN>`
 
 OAuth credentials and user preferences are stored in `data/settings.json`. Provider tokens are encrypted at rest in `data/tokens.json`. The encryption key and session secret are generated automatically on first run and persisted in `data/.enc_key` and `data/.session_secret`.
 
@@ -178,6 +179,20 @@ Example:
 curl -H "Authorization: Bearer $API_READ_TOKEN" \
   "http://homebridge.local:3050/jsonCalendar?timeframe=7d"
 ```
+
+### MCP server
+
+`POST /mcp`
+
+Exposes calendar events as an MCP tool (Streamable HTTP transport) for use with Claude and other MCP clients. Requires the same read token as `/jsonCalendar`:
+
+```http
+Authorization: Bearer <API_READ_TOKEN>
+```
+
+Provides one tool, `get_calendar_events`, which takes a `timeframe` argument in the same format as `/jsonCalendar` (`24h`, `7d`, `3m`, capped at 12 months).
+
+Add it as a remote MCP server pointed at `https://your-host/mcp` with a bearer token.
 
 ### Push external events
 
